@@ -1,0 +1,99 @@
+# 내부 관리 문서 (로컬 전용)
+CLAUDE.md
+HISTORY.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 시험 중 찍은 사진·로그·대용량 데이터
+captures/
+*.log
+dataset/
+
+# 시뮬레이션 출력
+sim/**/build/
+sim/**/obj_dir/
+*.vcd
+*.fst
+*.vvp
+*.elf
+*.o
+
+# 합성·PnR·등가성 검사 툴 출력 (요약만 문서로 남김)
+syn/**/runs/
+syn/**/out/
+pnr/**/runs/
+pnr/**/out/
+ec/**/runs/
+ec/**/out/
+*.jou
+*.str
+
+# Vivado
+fpga/**/build/
+*.xpr
+*.cache/
+*.hw/
+*.runs/
+*.sim/
+*.ip_user_files/
+*.gen/
+*.bit
+*.ltx
+*.dcp
+*.wdb
+.Xil/
+vivado*.jou
+xsim.dir/
+webtalk*
+
+# 교재 원본 (로컬 전용)
+*.pdf
+
+# 개인 설정 (장치 주소 등)
+config.local.*
+**/config.json
+
+# 에디터·OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── 공개 저장소 보호: PDK·툴 원본 파일 (gpdk045·Cadence 라이선스 대상) ──
+# 표준 셀·기술 파일
+*.lib
+*.lef
+*.tlef
+*.tf
+*.db
+*.cdl
+*.qrc
+*.captbl
+*.techfile
+# 레이아웃·추출·타이밍 원본
+*.def
+*.gds
+*.gds2
+*.gdsii
+*.oas
+*.spef
+*.sdf
+*.sdc.gz
+# 합성·PnR 넷리스트와 데이터베이스
+*.vg
+*_netlist.v
+*.enc
+*.enc.dat/
+*.dat/
+fv/
+# 툴 원본 리포트 (요약 표만 문서로 공개)
+*.rpt
+# 생성된 메모리 이미지 (빌드 스크립트로 다시 만듦)
+*.hex
+*.elf
