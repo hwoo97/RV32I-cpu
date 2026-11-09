@@ -12,11 +12,11 @@
 ## 2. 절차
 1. 테스트벤치 하나를 실행해 본다 (예: 카운터).
 ```bash
-python sim/run_sim.py cnt_tb rtl/ch02_logic/cnt.v sim/ch02_logic/cnt_tb.v
+python sim/run_sim.py cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v
 ```
 2. 파형을 보고 싶으면 `--gui`를 붙인다.
 ```bash
-python sim/run_sim.py cnt_tb rtl/ch02_logic/cnt.v sim/ch02_logic/cnt_tb.v --gui
+python sim/run_sim.py cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v --gui
 ```
 
 ## 3. 통과 기준

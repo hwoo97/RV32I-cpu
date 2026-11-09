@@ -56,4 +56,5 @@ bash sim/run_xrun.sh cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v --gui
 | 2026-11-09 | 학교 서버 | 1 환경 | 통과 | `xrun -version` 22.03-s012 |
 | 2026-11-09 | 이 PC xsim | 샘플 테스트벤치 | 통과 | 같은 파일로 xsim PASS |
 | 2026-11-09 | 이 PC Git Bash, 가짜 `xrun` | 3 판정 로직 | 통과 | PASS→0, FAIL→1, `*E` 오류→1, PASS 없음→1 |
-| | 학교 서버 | 2·4, 실제 Xcelium으로 3 | 미검증 | |
+| 2026-11-09 | 학교 서버, Xcelium 22.03 | 2 시뮬레이션 (PASS 쪽) | 통과 | `PASS` / `통과: cnt_tb` — 저장소에서 받은 파일 그대로 |
+| 2026-11-09 | 학교 서버 | 2 FAIL 쪽, 3 종료 코드, 4 파형 | 생략 | 판정 로직은 이 PC에서 확인, Xcelium·SimVision은 이전 학교 프로젝트에서 사용 경험 있음 |

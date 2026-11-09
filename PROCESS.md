@@ -2,15 +2,16 @@
 
 > 각 단계는 **산출물**이 나오고 **완료 기준**을 만족하면 다음 단계로 넘어간다. 기간 제한 없이 장 단위로 진행한다.
 > 현재 진행 단계는 [README.md](README.md)의 "현재 상태"에 표시한다. 장 하나를 진행하는 절차는 [개요서 4절](01_planning/overview.md#4-장-하나를-진행하는-절차).
+> 교재 1~3장(기초·논리 회로·산술)과 15장(연결망 이론)은 건너뛴다. CPU를 만든 직후 **MCU(CPU + 버스 + 주변장치)를 먼저 완성**하고, 그 뒤 교재 6~13장 흐름으로 CPU를 고도화한다.
 
 | 단계 | 이름 | 교재 범위 | 주요 산출물 | 폴더 |
 |------|------|-----------|-------------|------|
 | [1](#p1) | 기획 | — | 개요서 | [01_planning](01_planning) |
-| [2](#p2) | 환경 준비 | — | Vivado·보드·RISC-V 툴체인 점검 기록, XDC 템플릿, 테스트벤치 규칙 | [02_setup](02_setup) |
-| [3](#p3) | 기초 | 1~4장 | 논리·산술 회로, RV32I ISA·ALU | [03_chapters](03_chapters) |
-| [4](#p4) | 기본 CPU | 5~8장 | RV32I 단일 사이클·Zicsr 트랩·멀티사이클·파이프라인 | [03_chapters](03_chapters) |
-| [5](#p5) | 고급 CPU | 9~13장 | FPU·RV32F, 캐시·Sv32 MMU, 멀티스레드·멀티코어 | [03_chapters](03_chapters) |
-| [6](#p6) | I/O·연결망 | 14~15장 | I/O 컨트롤러, C 펌웨어로 CPU + I/O 보드 동작 | [03_chapters](03_chapters) |
+| [2](#p2) | 환경 준비 | — | Vivado·Xcelium·RISC-V 툴체인 점검 기록, 테스트벤치 규칙 | [02_setup](02_setup) |
+| [3](#p3) | 단일 사이클 CPU | 4·5장 | RV32I ISA·ALU, 단일 사이클 CPU | [03_chapters](03_chapters) |
+| [4](#p4) | MCU | 14장 일부 | 버스·메모리·GPIO·Timer·UART, C 펌웨어, FPGA 데모 | [03_chapters](03_chapters) |
+| [5](#p5) | CPU 고도화 | 6~8장 | 예외·인터럽트, 멀티사이클, 파이프라인 (MCU에 적용) | [03_chapters](03_chapters) |
+| [6](#p6) | 고급 | 9~13장, 14장 나머지 | FPU, 캐시·Sv32, 멀티코어, 추가 I/O | [03_chapters](03_chapters) |
 | [7](#p7) | 마무리 | — | 장별 비교표, 대표 설계 ASIC 흐름, 포트폴리오 | [04_results](04_results), [05_final](05_final) |
 
 ---
@@ -26,62 +27,62 @@
 <a id="p2"></a>
 ## 2단계 · 환경 준비
 **할 일** (`02_setup/<주제>/README.md`에 절차·통과 기준·결과)
-- Linux 서버: Xcelium으로 예제 시뮬레이션, RISC-V GCC·Spike 설치, riscv-tests 빌드
-- 이 PC: Vivado 설치·xsim 확인 (완료)
-- 코드 동기화용 Git 저장소
-- 보드 모델 확인, 보드 파일·XDC 템플릿(클럭·LED·스위치·버튼), LED 깜빡임 비트스트림
-- 테스트벤치 규칙(자가 검사, PASS/FAIL 출력, 타임아웃)과 시뮬레이션 실행 스크립트
-- Core-5300 보드 자료(칩 품번, 클럭, LED·스위치·UART·영상 출력, 마스터 XDC) 확보
-- Genus·Innovus 버전, gpdk045 경로 확인, 샘플 모듈 Genus 합성 스크립트
-- 교수님 서버 Conformal LEC로 샘플 모듈 등가성 검사 한 번
+- 학교 서버: Xcelium 시뮬레이션·판정 스크립트
+- 이 PC: Vivado·xsim, WSL `rv32i`에 RISC-V GCC·riscv-tests
+- Git 저장소, 공개 점검 스크립트
+- Core-5300 보드 자료 (4단계 FPGA 데모 전까지)
 
 **완료 기준**
-- Xcelium으로 샘플 테스트벤치 PASS, rv32ui 테스트 하나를 hex로 변환, Genus 샘플 합성 리포트, LEC 샘플 통과, 보드에서 LED 깜빡임
+- Xcelium으로 샘플 테스트벤치 PASS, rv32ui 테스트 하나를 hex로 변환
 
 <a id="p3"></a>
-## 3단계 · 기초 (1~4장)
+## 3단계 · 단일 사이클 CPU (교재 4·5장)
 **할 일**
-- 1장 요약, 2장 조합·순차 회로, 3장 가산기·곱셈기·나눗셈기·제곱근, 4장 RV32I 명령어 형식·RARS·ALU
-- 2장 회로 일부를 보드에 올려 LED·스위치로 확인
-- 3장 구조별 합성 비교 (리플 vs CLA, 배열 vs 월리스 트리)
+- 4장 대신: RV32I 명령어 형식(R/I/S/B/U/J)·인코딩 정리, RV32I ALU
+- 5장: 레지스터 파일, 즉치값 생성기, 데이터패스, 제어 유닛 → RV32I 37개 명령어 단일 사이클 CPU
+- riscv-tests 최소 테스트 환경(CSR 없는 `riscv_test.h`)·링커 스크립트·hex 변환 스크립트, 판정(`tohost`) 테스트벤치
+- 첫 Genus 합성 (gpdk045 경로·공통 스크립트 작성)
 
 **완료 기준**
-- 모든 모듈 자가 검사 테스트벤치 PASS, 3장 비교표 작성
+- rv32ui-p 전체 PASS (최소 테스트 환경, `fence_i`·`ma_data` 제외 — 6장에서 원래 환경으로 다시 확인), Genus 합성 결과 기록
 
 <a id="p4"></a>
-## 4단계 · 기본 CPU (5~8장)
+## 4단계 · MCU (교재 14장 일부)
 **할 일**
-- 5장 RV32I 단일 사이클 → 6장 Zicsr·M 모드 트랩·인터럽트 → 7장 멀티사이클 → 8장 5단 파이프라인(정밀 예외 포함)
-- 장마다 FPGA 실행(LED·ILA), 합성 결과 기록, 이전 장 테스트 프로그램 회귀
+- 메모리 맵, 버스(주소 디코더 + 버스 방식은 단계 시작 때 결정), 명령어·데이터 메모리
+- GPIO, Timer, UART (교재 14.3 UART 참고)
+- C 펌웨어: crt0, 링커 스크립트, 최소 `printf`, Makefile (WSL `rv32i`)
+- 시뮬레이션: 펌웨어 실행 → UART 출력을 테스트벤치가 디코딩
+- FPGA 데모: Core-5300에서 LED·UART 동작 (보드 자료 필요)
 
 **완료 기준**
-- 장마다 해당 riscv-tests(rv32ui·rv32mi) 전체 PASS + 회귀 PASS + FPGA 실행 확인
-- 5·7·8장 CPU 비교표(자원·Fmax·CPI·실행 사이클)
+- C 펌웨어가 시뮬레이션에서 UART로 문자열 출력, 주변장치 레지스터 테스트 PASS, 보드에서 LED·UART 확인, 합성 결과 기록
 
 <a id="p5"></a>
-## 5단계 · 고급 CPU (9~13장)
+## 5단계 · CPU 고도화 (교재 6~8장)
 **할 일**
-- 9장 FPU 연산기 → 10장 RV32IF 파이프라인 → 11장 캐시·TLB → 12장 캐시 + Sv32 MMU(하드웨어 페이지 테이블 워커, S 모드) → 13장 멀티스레드·멀티코어
-- 장이 크면 절 단위로 나눠 진행하고 절마다 기록
+- 6장: Zicsr + M 모드 트랩(ecall·ebreak·illegal·정렬 오류), Timer·외부 인터럽트 → MCU 인터럽트로 연결
+- 7장: 멀티사이클 CPU (선택: M 확장)
+- 8장: 5단 파이프라인, 포워딩, load-use stall, 분기 flush, 정밀 예외
+- 장마다 MCU 코어를 교체해 펌웨어가 그대로 도는지 회귀
 
 **완료 기준**
-- 장마다 테스트 PASS(10장 rv32uf, 12장 rv32si 등) + 합성 기록, CPU 장은 FPGA 실행 확인
+- 장마다 rv32ui·rv32mi 전체 PASS + 펌웨어 회귀 + FPGA 실행 + 합성 기록, 3·5·7·8장 CPU 비교표
 
 <a id="p6"></a>
-## 6단계 · I/O·연결망 (14~15장)
+## 6단계 · 고급 (교재 9~13장, 14장 나머지)
 **할 일**
-- 14장 패리티·ECC·CRC, UART, PS/2, VGA, I2C, PCI, RV32I CPU + I/O를 C 펌웨어로 구동
-- 보드에 있는 장치(UART·VGA/HDMI 등)는 실물로 확인, 없는 장치는 Pmod 또는 시뮬레이션으로 대체
-- 15장 요약·연습문제
+- 9·10장 FPU·RV32F → 11·12장 캐시·Sv32 MMU → 13장 멀티스레드·멀티코어 → 14장 나머지 I/O(PS/2·VGA·I2C 등)
+- 장이 크면 절 단위로 나눠 진행
 
 **완료 기준**
-- 모듈별 테스트벤치 PASS, C 펌웨어로 CPU + I/O를 보드에서 실행 (예: UART 출력)
+- 장마다 테스트 PASS(10장 rv32uf, 12장 rv32si 등) + 합성 기록, CPU 장은 FPGA 실행
 
 <a id="p7"></a>
 ## 7단계 · 마무리
 **할 일**
 - `04_results/`에 장별 합성·성능 비교표 정리
-- 대표 CPU(예: 8장 파이프라인) 하나로 Genus 합성 → Innovus PnR → Conformal LEC (교수님 서버)
+- 대표 CPU(예: 8장 파이프라인 MCU) 하나로 Genus 합성 → Innovus PnR → Conformal LEC (교수님 서버)
 - README·포트폴리오 문서, FPGA 시연 영상, 블록 다이어그램
 
 **완료 기준**
