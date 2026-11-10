@@ -96,4 +96,6 @@ fv/
 *.rpt
 # 생성된 메모리 이미지 (빌드 스크립트로 다시 만듦)
 *.hex
+# riscv-tests 빌드 결과(hex)는 예외로 커밋 — 학교 서버에 RISC-V 툴체인이 없음
+!sim/riscv-tests-hex/**/*.hex
 *.elf

@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 660" font-family="Segoe UI, Malgun Gothic, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+  </defs>
+  <rect width="1120" height="660" fill="#ffffff"/>
+  <text x="20" y="24" font-size="16" font-weight="bold" fill="#222">RV32I 단일 사이클 데이터패스 (decode.md 기준)</text>
+  <text x="20" y="44" fill="#c25e00">주황 글씨 = 제어 유닛 출력 신호</text>
+  <text x="250" y="44" fill="#1f5fbf">파란 글씨 = 최상위 wire 이름 (decode.md 8절)</text>
+
+  <g fill="#f4f6fb" stroke="#334" stroke-width="1.5">
+    <!-- next PC mux -->
+    <path d="M40,230 L76,245 L76,335 L40,350 z"/>
+    <!-- PC -->
+    <rect x="110" y="260" width="70" height="60" rx="4"/>
+    <!-- +4 -->
+    <rect x="210" y="110" width="60" height="50" rx="4"/>
+    <!-- IMEM -->
+    <rect x="230" y="240" width="120" height="100" rx="4"/>
+    <!-- control -->
+    <rect x="410" y="60" width="220" height="70" rx="4"/>
+    <!-- regfile -->
+    <rect x="410" y="200" width="150" height="170" rx="4"/>
+    <!-- immgen -->
+    <rect x="410" y="420" width="150" height="60" rx="4"/>
+    <!-- branch comparator -->
+    <rect x="660" y="150" width="130" height="50" rx="4"/>
+    <!-- mux A, mux B -->
+    <path d="M640,215 L670,228 L670,282 L640,295 z"/>
+    <path d="M640,315 L670,328 L670,382 L640,395 z"/>
+    <!-- ALU -->
+    <path d="M710,230 L790,265 L790,345 L710,380 L710,320 L725,305 L710,290 z"/>
+    <!-- target adder -->
+    <rect x="660" y="470" width="100" height="50" rx="4"/>
+    <!-- DMEM -->
+    <rect x="850" y="250" width="140" height="150" rx="4"/>
+    <!-- WB mux -->
+    <path d="M1030,225 L1062,240 L1062,395 L1030,410 z"/>
+  </g>
+
+  <g fill="#222" text-anchor="middle">
+    <text x="56" y="255" font-size="11">①</text><text x="56" y="305" font-size="11">②</text><text x="56" y="335" font-size="11">③</text>
+    <text x="145" y="295" font-weight="bold">PC</text>
+    <text x="240" y="140">+4</text>
+    <text x="290" y="285">명령어</text><text x="290" y="302">메모리</text>
+    <text x="520" y="90" font-weight="bold">제어 유닛</text>
+    <text x="520" y="110" font-size="11">opcode · funct3 · inst[30]</text>
+    <text x="485" y="345" font-weight="bold">레지스터 파일</text>
+    <text x="485" y="362" font-size="11">x0 = 0 고정</text>
+    <text x="485" y="455" font-weight="bold">즉치값 생성기</text>
+    <text x="725" y="180">분기 비교기</text>
+    <text x="655" y="260" font-size="11">A</text>
+    <text x="655" y="360" font-size="11">B</text>
+    <text x="757" y="310" font-weight="bold">ALU</text>
+    <text x="710" y="500">PC + imm</text>
+    <text x="920" y="315" font-weight="bold">데이터 메모리</text>
+    <text x="920" y="335" font-size="11">wstrb · load 확장</text>
+    <text x="1046" y="320" font-size="11">MUX</text>
+  </g>
+
+  <g fill="#555" font-size="11">
+    <text x="414" y="234">rs1 ←[19:15]</text>
+    <text x="414" y="262">rs2 ←[24:20]</text>
+    <text x="414" y="290">rd ←[11:7]</text>
+    <text x="414" y="318">wd</text>
+    <text x="515" y="244">rd1</text>
+    <text x="515" y="324">rd2</text>
+    <text x="854" y="290">addr</text>
+    <text x="854" y="384">wdata</text>
+    <text x="955" y="290">rdata</text>
+    <text x="1000" y="246">ALU</text>
+    <text x="1000" y="296">MEM</text>
+    <text x="1000" y="346">PC+4</text>
+    <text x="1000" y="386">IMM</text>
+    <text x="660" y="64" font-weight="bold" fill="#222">다음 PC MUX 입력</text>
+    <text x="660" y="80">① PC+4 (기본)</text>
+    <text x="660" y="95">② PC+imm (분기 성립 또는 jal)</text>
+    <text x="660" y="110">③ (rs1+imm) &amp; ~1 (jalr, ALU 결과 재사용)</text>
+  </g>
+
+  <g fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#a)">
+    <!-- next PC mux -> PC -->
+    <polyline points="76,290 110,290"/>
+    <!-- PC -> IMEM -->
+    <polyline points="180,290 230,290"/>
+    <!-- PC -> +4 -->
+    <polyline points="195,290 195,135 210,135"/>
+    <!-- +4 -> next PC mux (top) -->
+    <polyline points="270,135 285,135 285,95 22,95 22,250 40,250"/>
+    <!-- +4 -> WB mux PC+4 -->
+    <polyline points="285,135 1010,135 1010,342 1030,342"/>
+    <!-- target adder -> next PC mux -->
+    <polyline points="760,495 775,495 775,560 28,560 28,300 40,300"/>
+    <!-- ALU result -> next PC mux (jalr) -->
+    <polyline points="810,305 810,580 16,580 16,330 40,330"/>
+    <!-- IMEM -> inst bus -->
+    <polyline points="350,290 380,290" marker-end="none"/>
+    <polyline points="380,95 380,455" marker-end="none"/>
+    <polyline points="380,95 410,95"/>
+    <polyline points="380,230 410,230"/>
+    <polyline points="380,258 410,258"/>
+    <polyline points="380,286 410,286"/>
+    <polyline points="380,450 410,450"/>
+    <!-- rd1 -> mux A, comparator -->
+    <polyline points="560,240 640,240"/>
+    <polyline points="600,240 600,165 660,165"/>
+    <!-- rd2 -> mux B, comparator, DMEM wdata -->
+    <polyline points="560,320 640,330"/>
+    <polyline points="610,320 610,185 660,185"/>
+    <polyline points="620,320 620,410 830,410 830,380 850,380"/>
+    <!-- PC -> mux A, target adder -->
+    <polyline points="195,290 195,610 630,610 630,505 660,505"/>
+    <polyline points="630,505 630,280 640,280"/>
+    <!-- imm -> mux B, target adder, WB IMM -->
+    <polyline points="560,450 590,450 590,375 640,375"/>
+    <polyline points="590,450 590,485 660,485"/>
+    <polyline points="590,450 590,540 1015,540 1015,382 1030,382"/>
+    <!-- mux -> ALU -->
+    <polyline points="670,255 710,255"/>
+    <polyline points="670,355 710,355"/>
+    <!-- ALU -> DMEM addr, WB ALU -->
+    <polyline points="790,305 850,305"/>
+    <polyline points="820,305 820,240 1030,240"/>
+    <!-- DMEM -> WB MEM -->
+    <polyline points="990,300 1030,300"/>
+    <!-- WB -> regfile wd -->
+    <polyline points="1062,317 1090,317 1090,640 395,640 395,314 410,314"/>
+  </g>
+
+  <g fill="#c25e00" font-size="12">
+    <text x="34" y="368">jal · jalr ·</text>
+    <text x="34" y="382">branch&amp;taken</text>
+    <text x="470" y="196">reg_we</text>
+    <text x="440" y="500">imm_sel</text>
+    <text x="680" y="140">funct3</text>
+    <text x="626" y="210">a_sel</text>
+    <text x="674" y="400">b_sel</text>
+    <text x="725" y="225">alu_op</text>
+    <text x="852" y="430">mem_re · mem_we · mem_size</text>
+    <text x="1020" y="218">wb_sel</text>
+  </g>
+
+  <g fill="#1f5fbf" font-size="10">
+    <text x="78" y="282">pc_next</text>
+    <text x="186" y="282">pc</text>
+    <text x="276" y="128">pc_plus4</text>
+    <text x="352" y="282">inst</text>
+    <text x="563" y="234">rs1_data</text>
+    <text x="563" y="314">rs2_data</text>
+    <text x="563" y="444">imm</text>
+    <text x="672" y="249">alu_a</text>
+    <text x="672" y="349">alu_b</text>
+    <text x="794" y="297">alu_result</text>
+    <text x="795" y="170">br_taken</text>
+    <text x="764" y="488">pc_target</text>
+    <text x="993" y="313" font-size="9">mem_rdata</text>
+    <text x="1066" y="309">wb_data</text>
+  </g>
+</svg>

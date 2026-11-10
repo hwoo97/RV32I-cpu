@@ -36,12 +36,16 @@ def main():
     args = parser.parse_args()
 
     files = [os.path.abspath(f) for f in args.files]
+    # `include 파일은 각 소스 파일이 있는 폴더에서 찾는다
+    incdirs = []
+    for d in dict.fromkeys(os.path.dirname(f) for f in files):
+        incdirs += ["-i", d]
     build = os.path.join(ROOT, "sim", "build", args.top)
     shutil.rmtree(build, ignore_errors=True)
     os.makedirs(build)
 
     steps = [
-        ("xvlog", [tool("xvlog")] + files),
+        ("xvlog", [tool("xvlog")] + incdirs + files),
         ("xelab", [tool("xelab"), "-debug", "typical" if args.gui else "off", args.top, "-s", args.top + "_sim"]),
         ("xsim", [tool("xsim"), args.top + "_sim"] + (["-gui"] if args.gui else ["-R"])),
     ]

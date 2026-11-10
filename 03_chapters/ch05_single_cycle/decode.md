@@ -4,6 +4,8 @@
 > 기준: RISC-V Unprivileged ISA 명세 "RV32I Base Integer Instruction Set"과 "Instruction Set Listings" 표.
 
 ## 1. 데이터패스 가정 (단일 사이클)
+![RV32I 단일 사이클 데이터패스](img/datapath.svg)
+
 ```
 PC ─► 명령어 메모리 ─► inst ─┬─► 레지스터 파일(rs1, rs2 읽기)
                               ├─► 즉치값 생성기 (imm_sel)
@@ -54,6 +56,12 @@ ALU 입력 B = rs2 또는 imm  (b_sel)
 - **FENCE**: 단일 사이클·캐시 없는 CPU에서는 메모리 순서가 이미 지켜지므로 아무 일도 하지 않음(NOP).
 - **SYSTEM**: 3단계에서는 `illegal = 1`과 같은 취급(시뮬레이션 정지). 6장에서 트랩으로 구현.
 - **그 밖의 opcode**: `illegal = 1`.
+- **같은 opcode 안에서 정의되지 않은 조합도 illegal** (control.v에서 확인):
+  - OP: funct7이 0000000이 아니면서 sub·sra(0100000)도 아님 (예: M 확장 `mul`)
+  - OP-IMM 시프트: `slli`의 imm[11:5] ≠ 0000000, `srli/srai`의 imm[11:5]가 0000000·0100000이 아님
+  - LOAD funct3 011·110·111, STORE funct3 011·1xx, BRANCH funct3 010·011, JALR funct3 ≠ 000, FENCE funct3 ≠ 000(`fence.i`)
+- **값 이름**: `a_sel` = `` `A_RS1 ``/`` `A_PC ``, `b_sel` = `` `B_RS2 ``/`` `B_IMM ``, `wb_sel` = `` `WB_ALU ``/`` `WB_MEM ``/`` `WB_PC4 ``/`` `WB_IMM `` (`rv32i_defs.vh`)
+- **illegal일 때**: 부작용이 있는 신호(`reg_we`, `mem_re`, `mem_we`, `branch`, `jal`, `jalr`)는 모두 0
 
 ## 4. ALU 연산 결정 (`alu_op`)
 | funct3 | OP (R형) | OP-IMM (I형) | 주의 |
@@ -87,7 +95,8 @@ ALU 입력 B = rs2 또는 imm  (b_sel)
 | `100` | lbu | — | 바이트, 0 확장 |
 | `101` | lhu | — | 하프워드, 0 확장 |
 - 메모리는 워드(32비트) 단위로 두고, 주소 하위 2비트로 바이트 위치를 고른다. store는 **바이트 쓰기 신호(`wstrb[3:0]`)**로 해당 바이트만 쓴다.
-- 정렬 안 된 접근(예: 주소가 4의 배수가 아닌 `lw`)은 3단계에서는 시뮬레이션 정지·FAIL, 6장에서 예외로.
+- 정렬 안 된 접근(예: 주소가 4의 배수가 아닌 `lw`)은 `dmem`이 `misaligned = 1`을 내고 store는 하지 않는다. 3단계에서는 시뮬레이션 정지·FAIL, 6장에서 예외로.
+- `dmem` 내부: store는 `wstrb`(sb `0001<<off`, sh `0011<<{off[1],0}`, sw `1111`)와 바이트 위치로 복제한 쓰기 데이터, load는 워드에서 바이트·하프워드를 골라 확장.
 
 ## 7. 즉치값 생성기 (`imm_sel`)
 | 형식 | 만드는 값 (32비트, 부호 비트 = inst[31]) |
@@ -98,9 +107,77 @@ ALU 입력 B = rs2 또는 imm  (b_sel)
 | U | { inst[31:12], 12'b0 } |
 | J | { 11 × inst[31], inst[31], inst[19:12], inst[20], inst[30:21], 1'b0 } |
 
+모듈 규약 (테스트벤치가 이 이름·값을 쓴다)
+```verilog
+module imm_gen (
+    input  [31:0] inst,      // 명령어 전체
+    input  [2:0]  imm_sel,   // 0:I  1:S  2:B  3:U  4:J  (그 밖의 값이면 imm = 0)
+    output [31:0] imm        // 부호 확장된 즉치값 (조합 회로)
+);
+```
+- 파일: `rtl/ch05_single_cycle/imm_gen.v`, 테스트벤치: `sim/ch05_single_cycle/imm_gen_tb.v`
+- `imm_sel` 값은 이후 제어 유닛에서도 같은 값을 쓰므로 `` `define `` 헤더(`rtl/ch05_single_cycle/rv32i_defs.vh`)로 이름을 붙여 두면 좋다 (예: `` `IMM_I `` = 3'd0)
+
 손 디코드 확인값 (riscv-tests 실제 명령어): `sw` `fc3f2223` → S = −60, `beq` `03ff0863` → B = +48, `jal` `0500006f` → J = +0x50, `lui` `800002b7` → U = 0x80000000.
 
-## 8. 검증 방법 (riscv-tests 실행 환경)
+## 8. 신호 이름 규칙
+최상위 모듈에서 인스턴스를 연결할 때 연결 관계가 한눈에 보이도록 아래 이름을 모든 모듈·테스트벤치·블록 다이어그램에 똑같이 쓴다.
+
+### 8.1 최상위 데이터 wire (블록 다이어그램 파란 글씨와 1:1)
+| 그림 위치 | wire 이름 | 폭 |
+|-----------|-----------|:--:|
+| 다음 PC MUX 출력 | `pc_next` | 32 |
+| PC 레지스터 출력 | `pc` | 32 |
+| +4 덧셈기 출력 | `pc_plus4` | 32 |
+| PC+imm 덧셈기 출력 (분기·jal 대상) | `pc_target` | 32 |
+| 명령어 메모리 출력 | `inst` | 32 |
+| 레지스터 파일 출력 | `rs1_data`, `rs2_data` | 32 |
+| 즉치값 생성기 출력 | `imm` | 32 |
+| A·B MUX 출력 (ALU 입력) | `alu_a`, `alu_b` | 32 |
+| ALU 출력 | `alu_result` | 32 |
+| 분기 비교기 출력 | `br_taken` | 1 |
+| 데이터 메모리 정렬 오류 | `mem_misaligned` | 1 |
+| 데이터 메모리 읽기 값 (load 확장 후) | `mem_rdata` | 32 |
+| WB MUX 출력 (`rd`에 쓸 값) | `wb_data` | 32 |
+
+### 8.2 제어 신호
+- 2절 표의 이름(`reg_we`, `imm_sel`, `a_sel`, `b_sel`, `alu_op`, `mem_re`, `mem_we`, `mem_size`, `wb_sel`, `branch`, `jal`, `jalr`, `illegal`)을 제어 유닛 출력 → 최상위 wire → 각 모듈 입력 포트까지 **같은 이름**으로 쓴다.
+- 값은 `rv32i_defs.vh`의 `` `define `` 이름(`` `IMM_* ``, `` `ALU_* `` …)으로만 비교·대입한다.
+
+### 8.3 접미사·앞머리
+| 규칙 | 뜻 | 예 |
+|------|----|----|
+| `_sel` | MUX 선택 신호 | `imm_sel`, `wb_sel` |
+| `_we` / `_re` | 쓰기·읽기 허가 | `reg_we`, `mem_we` |
+| `_data` | 데이터 값 | `rs1_data`, `wb_data` |
+| `_addr` | 주소 | `mem_addr` |
+| `_n` | 0일 때 동작 (active low) | `rst_n` |
+| `u_` (앞머리) | 인스턴스 이름 | `u_alu`, `u_imm_gen` |
+| 모듈 이름 | 소문자 + `_` | `imm_gen`, `alu`, `regfile`, `control` |
+
+### 8.4 모듈 포트
+- 제어 신호 포트: 8.2 이름 그대로.
+- 데이터 포트: 모듈 안에서 의미가 분명한 이름 (`a`, `b`, `result`, `imm` …). 최상위에서는 **이름으로 연결**(`.포트(wire)`)하고, 순서로 연결하지 않는다.
+```verilog
+alu u_alu (
+    .a      (alu_a),
+    .b      (alu_b),
+    .alu_op (alu_op),
+    .result (alu_result)
+);
+```
+
+### 8.5 모듈별 포트와 최상위 연결
+| 모듈 (인스턴스) | 포트 → 최상위 wire |
+|------------------|--------------------|
+| `imm_gen` (`u_imm_gen`) | `inst`→`inst`, `imm_sel`→`imm_sel`, `imm`→`imm` |
+| `alu` (`u_alu`) | `a`→`alu_a`, `b`→`alu_b`, `alu_op`→`alu_op`, `result`→`alu_result` |
+| `control` (`u_control`) | `inst`→`inst`, 제어 신호 13개 → 같은 이름의 wire (`reg_we`, `imm_sel`, `a_sel`, `b_sel`, `alu_op`, `mem_re`, `mem_we`, `mem_size`, `wb_sel`, `branch`, `jal`, `jalr`, `illegal`) |
+| `branch_cmp` (`u_branch_cmp`) | `rs1_data`→`rs1_data`, `rs2_data`→`rs2_data`, `funct3`→`inst[14:12]`, `br_taken`→`br_taken` (실제 분기 = `branch & br_taken`) |
+| `dmem` (`u_dmem`) | `clk`, `mem_re`→`mem_re`, `mem_we`→`mem_we`, `mem_size`→`mem_size`, `addr`→`alu_result`, `wdata`→`rs2_data`, `rdata`→`mem_rdata`, `misaligned`→`mem_misaligned` |
+| `regfile` (`u_regfile`) | `clk`, `reg_we`→`reg_we`, `rs1_addr`→`inst[19:15]`, `rs2_addr`→`inst[24:20]`, `rd_addr`→`inst[11:7]`, `rd_data`→`wb_data`, `rs1_data`→`rs1_data`, `rs2_data`→`rs2_data` |
+
+## 9. 검증 방법 (riscv-tests 실행 환경)
 riscv-tests의 기본 시작 코드(`env/p`)는 `csrr`·`csrw`(CSR 명령어), `mret`, `ecall`을 쓴다. CSR이 없는 3단계 CPU로는 시작 코드부터 실행할 수 없다.
 - **3단계**: CSR을 쓰지 않는 **최소 테스트 환경**(`riscv_test.h`)을 직접 만든다.
   - 시작 코드는 바로 테스트로 들어간다.
@@ -108,3 +185,10 @@ riscv-tests의 기본 시작 코드(`env/p`)는 `csrr`·`csrw`(CSR 명령어), `
   - 테스트벤치가 `tohost` 쓰기를 감시해 판정한다.
 - **제외**: `rv32ui-p-fence_i`(Zifencei 확장), `rv32ui-p-ma_data`(정렬 안 된 접근 — 6장에서 트랩과 함께)
 - **6장 이후**: CSR과 트랩을 구현하면 원래 시작 코드(`env/p`)로 다시 돌려 확인한다.
+- **구현 파일**
+  - [`sim/riscv-tests-env/riscv_test.h`](../../sim/riscv-tests-env/riscv_test.h): 최소 환경 매크로
+  - [`link.ld`](../../sim/riscv-tests-env/link.ld): 0x0 코드, 0x1000 tohost, 0x1040~ 데이터, 8 KB 안
+  - [`build_rv32ui.sh`](../../sim/riscv-tests-env/build_rv32ui.sh): WSL에서 빌드·hex 변환
+  - [`rv32i_sc_tb.v`](../../sim/ch05_single_cycle/rv32i_sc_tb.v): `+HEX=`로 프로그램 지정, tohost·trap·타임아웃 판정
+  - [`run_riscv_tests.py`](../../sim/run_riscv_tests.py): 한 번 컴파일 후 테스트별 실행
+- **결과**: [test.md](test.md) — rv32ui 40/40 PASS (2026-11-10)

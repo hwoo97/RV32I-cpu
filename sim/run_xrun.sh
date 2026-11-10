@@ -18,19 +18,24 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOP="$1"; shift
 GUI=0
 FILES=()
+INCDIRS=()
 for arg in "$@"; do
-    if [ "$arg" = "--gui" ]; then GUI=1; else FILES+=("$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")"); fi
+    if [ "$arg" = "--gui" ]; then GUI=1; else
+        DIR="$(cd "$(dirname "$arg")" && pwd)"
+        FILES+=("$DIR/$(basename "$arg")")
+        INCDIRS+=("-incdir" "$DIR")   # `include 파일은 각 소스 파일 폴더에서 찾는다
+    fi
 done
 
 BUILD="$ROOT/sim/build/$TOP"
 rm -rf "$BUILD" && mkdir -p "$BUILD" && cd "$BUILD" || exit 1
 
 if [ $GUI -eq 1 ]; then
-    xrun -64bit -access +rwc -top "$TOP" -gui "${FILES[@]}"
+    xrun -64bit -access +rwc -top "$TOP" -gui "${INCDIRS[@]}" "${FILES[@]}"
     exit $?
 fi
 
-xrun -64bit -top "$TOP" -l xrun.log "${FILES[@]}" > /dev/null 2>&1
+xrun -64bit -top "$TOP" -l xrun.log "${INCDIRS[@]}" "${FILES[@]}" > /dev/null 2>&1
 CODE=$?
 
 grep -E "PASS|FAIL" xrun.log
