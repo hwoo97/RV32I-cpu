@@ -9,6 +9,7 @@
 | 2026-11-10 | `control` | `control_tb` (RV32I 41 + 불법 19) | PASS | 버그 모델(addi→SUB) FAIL 1 |
 | 2026-11-10 | `branch_cmp` | `branch_cmp_tb` (632벡터) | PASS | 버그 모델(bge 부호 없음) FAIL 37 |
 | 2026-11-10 | `dmem` | `dmem_tb` (바이트 shadow, 무작위 4000) | PASS | 버그 모델(lb 0확장 FAIL 396, sh 위치 FAIL 1152) |
+| 2026-11-10 | `lsu` + `dmem` (코어 분리 후) | `dmem_tb` (같은 시험, lsu와 워드 RAM을 이어 붙임) | PASS | 바이트 처리를 dmem → 코어 안 lsu로 옮김 |
 
 ## 시뮬레이션 — CPU 전체 (riscv-tests rv32ui, 최소 테스트 환경)
 실행 방법
@@ -29,6 +30,7 @@ bash sim/run_riscv_tests.sh
 | 날짜 | 설계 | 결과 | 비고 |
 |------|------|------|------|
 | 2026-11-10 | `rv32i_sc` | **40 / 40 PASS** | 사이클 수 35(simple) ~ 957(ld_st). 버그 모델(jal 복귀 주소 = pc) → jal·jalr FAIL |
+| 2026-11-10 | `rv32i_sc` = `rv32i_core` + `imem` + `dmem` (코어 분리 후) | **40 / 40 PASS** | 테스트벤치는 코어의 `dmem_*` 포트로 tohost 판정 |
 
 | 테스트 | 사이클 | 테스트 | 사이클 | 테스트 | 사이클 | 테스트 | 사이클 |
 |--------|------:|--------|------:|--------|------:|--------|------:|
@@ -50,10 +52,10 @@ bash sim/run_riscv_tests.sh
 ## 학교 서버 (Xcelium)
 | 날짜 | 설계 | 결과 | 비고 |
 |------|------|------|------|
-| | `rv32i_sc` | 미검증 | `bash sim/run_riscv_tests.sh` 실행 결과를 여기에 기록 (판정 로직은 이 PC에서 가짜 xrun으로 확인) |
+| 2026-11-10 | `rv32i_sc` | **40 / 40 PASS** | `bash sim/run_riscv_tests.sh`. 테스트별 사이클 수가 xsim 결과와 모두 같음 (두 시뮬레이터에서 동작 일치) |
 
 ## 합성 결과
-- 미실행 (gpdk045 경로 확인 후 Genus)
+- 스크립트 준비: [syn/ch05_single_cycle](../../syn/ch05_single_cycle/README.md) — 결과는 그 README에 기록 (미실행)
 
 ## 문제와 해결
 - `run_riscv_tests.py`에서 xsim에 `-testplusarg HEX=…`를 넘기면 결과가 안 나옴 → Windows `.bat`가 인자 안의 `=`에서 인자를 나눔 → 인자를 따옴표로 감싸 문자열로 전달

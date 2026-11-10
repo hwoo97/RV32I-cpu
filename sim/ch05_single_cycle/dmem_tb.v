@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
-// dmem 자가 검사 테스트벤치 (decode.md 6절)
+// lsu + dmem 자가 검사 테스트벤치 (decode.md 6절)
+// 코어 안의 lsu(바이트 처리·정렬 검사)와 단순 워드 RAM dmem을 이어 붙여 load/store 동작 전체를 확인한다.
 // 테스트벤치 안에 바이트 단위 기록 표(shadow)를 두고, store할 때 같이 기록해 load 결과와 비교한다.
 // 확인 항목
 //  1) sw → lw (워드 64개)
@@ -24,9 +25,17 @@ module dmem_tb;
     reg  [31:0] r_addr, r_data;
     reg  [2:0]  r_size;
 
-    dmem #(.ADDR_BITS(13)) dut (
-        .clk(clk), .mem_re(mem_re), .mem_we(mem_we), .mem_size(mem_size),
-        .addr(addr), .wdata(wdata), .rdata(rdata), .misaligned(misaligned)
+    wire [3:0]  dmem_wstrb;
+    wire [31:0] dmem_wdata, dmem_rdata;
+
+    lsu u_lsu (
+        .mem_re(mem_re), .mem_we(mem_we), .mem_size(mem_size), .addr(addr), .wdata(wdata),
+        .rdata(rdata), .misaligned(misaligned),
+        .dmem_wstrb(dmem_wstrb), .dmem_wdata(dmem_wdata), .dmem_rdata(dmem_rdata)
+    );
+
+    dmem #(.ADDR_BITS(13)) u_dmem (
+        .clk(clk), .addr(addr), .wstrb(dmem_wstrb), .wdata(dmem_wdata), .rdata(dmem_rdata)
     );
 
     always #5 clk = ~clk;
@@ -137,7 +146,7 @@ module dmem_tb;
             endcase
         end
 
-        if (errors == 0) $display("PASS: dmem");
+        if (errors == 0) $display("PASS: lsu + dmem");
         else             $display("FAIL: %0d errors", errors);
         $finish;
     end

@@ -3,7 +3,8 @@
 
 | 파일 | 역할 |
 |------|------|
-| `syn/common/` (예정) | gpdk045 라이브러리 경로(환경 변수), 공통 Genus 스크립트 |
+| [`syn/common/gpdk045.tcl`](../../syn/common/gpdk045.tcl) | gpdk045 라이브러리 읽기 (경로는 환경 변수 `GPDK045_DIR`) |
+| [`syn/ch05_single_cycle/`](../../syn/ch05_single_cycle/README.md) | 첫 합성: 단일 사이클 CPU 코어 |
 | `syn/ch00_sample/` (예정) | 샘플 카운터 합성 스크립트·SDC |
 | `pnr/ch00_sample/` (예정) | 샘플 Innovus 스크립트 |
 | `ec/ch00_sample/` (예정) | LEC 실행 파일 목록·do 파일 (Genus `write_do_lec`로 생성) |
@@ -30,10 +31,10 @@ gpdk045와 Cadence 툴은 라이선스 대상이라 **원본 파일과 원본 �
 | PnR | Innovus 22.17-s086_1 |
 | 시뮬레이터 | Xcelium 22.03-s012 |
 | 등가성 검사 | Conformal LEC — **교수님 서버** (버전: , 파일 옮기는 방법: ) |
-| gpdk045 설치 경로 | |
-| 표준 셀 `.lib` 코너 (slow/typical/fast) | |
-| LEF·QRC 등 PnR 파일 위치 | |
-| SRAM 매크로 유무 | (gpdk045는 보통 없음) |
+| gpdk045 설치 경로 | 공개하지 않음 — 서버에서 환경 변수 `GPDK045_DIR`로 지정 |
+| 표준 셀 `.lib` 코너 (slow/typical/fast) | `slow_vdd1v0` / `fast_vdd1v0` (basicCells). 합성은 slow |
+| LEF·QRC 등 PnR 파일 위치 | `gsclib045_tech.lef`, `gsclib045_macro.lef`, QRC `gpdk045.tch` (GPDK045 폴더 기준 경로는 `syn/common/gpdk045.tcl`) |
+| SRAM 매크로 유무 | 없음 → 코어만 합성, 메모리는 SDC 지연으로 모델링 |
 | 결과 공개 규칙 | 공개 저장소 — 아래 0절 참고 |
 
 ## 2. 절차 (확인 후)

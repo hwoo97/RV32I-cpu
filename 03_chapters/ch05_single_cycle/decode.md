@@ -18,6 +18,13 @@ ALU 입력 B = rs2 또는 imm  (b_sel)
 ```
 - 분기 비교기를 ALU와 따로 두는 이유: 같은 사이클에 ALU는 다른 일을 해도 되고(분기 대상 주소는 별도 덧셈기), 제어가 단순해진다.
 - `lui`는 ALU를 거치지 않고 `wb_sel = IMM`으로 바로 쓴다 (다른 방법: A=0, B=imm, ADD).
+- **코어와 메모리 분리** (2026-11-10, 합성 준비): 그림의 명령어·데이터 메모리를 뺀 나머지가 `rv32i_core`(합성 대상)이고, `rv32i_sc`는 코어에 `imem`·`dmem`을 붙인 시뮬레이션·FPGA용 최상위다. gpdk045에는 SRAM 매크로가 없어 메모리를 합성하면 플립플롭 13만 개로 풀리기 때문이다. 바이트 처리(load 확장·store 바이트 선택·정렬 검사)는 코어 안의 `lsu`로 옮겨, 메모리는 워드 단위 RAM만 남는다. MCU 단계에서는 이 메모리 포트를 버스에 연결한다.
+```
+rv32i_sc
+├── rv32i_core ── control, regfile, imm_gen, alu, branch_cmp, lsu   ← 합성 대상
+├── imem   (imem_addr → imem_rdata, 비동기 읽기)
+└── dmem   (dmem_addr·dmem_wstrb·dmem_wdata → dmem_rdata, 비동기 읽기·동기 쓰기)
+```
 
 ## 2. 제어 신호
 | 신호 | 폭 | 값 | 뜻 |
@@ -95,8 +102,8 @@ ALU 입력 B = rs2 또는 imm  (b_sel)
 | `100` | lbu | — | 바이트, 0 확장 |
 | `101` | lhu | — | 하프워드, 0 확장 |
 - 메모리는 워드(32비트) 단위로 두고, 주소 하위 2비트로 바이트 위치를 고른다. store는 **바이트 쓰기 신호(`wstrb[3:0]`)**로 해당 바이트만 쓴다.
-- 정렬 안 된 접근(예: 주소가 4의 배수가 아닌 `lw`)은 `dmem`이 `misaligned = 1`을 내고 store는 하지 않는다. 3단계에서는 시뮬레이션 정지·FAIL, 6장에서 예외로.
-- `dmem` 내부: store는 `wstrb`(sb `0001<<off`, sh `0011<<{off[1],0}`, sw `1111`)와 바이트 위치로 복제한 쓰기 데이터, load는 워드에서 바이트·하프워드를 골라 확장.
+- 정렬 안 된 접근(예: 주소가 4의 배수가 아닌 `lw`)은 `lsu`가 `misaligned = 1`을 내고 store는 하지 않는다(`dmem_wstrb = 0`). 3단계에서는 시뮬레이션 정지·FAIL, 6장에서 예외로.
+- `lsu` 내부 (처음에는 `dmem` 안에 있었고 합성 준비 때 코어로 옮김): store는 `wstrb`(sb `0001<<off`, sh `0011<<{off[1],0}`, sw `1111`)와 바이트 위치로 복제한 쓰기 데이터, load는 워드에서 바이트·하프워드를 골라 확장.
 
 ## 7. 즉치값 생성기 (`imm_sel`)
 | 형식 | 만드는 값 (32비트, 부호 비트 = inst[31]) |
@@ -136,9 +143,20 @@ module imm_gen (
 | A·B MUX 출력 (ALU 입력) | `alu_a`, `alu_b` | 32 |
 | ALU 출력 | `alu_result` | 32 |
 | 분기 비교기 출력 | `br_taken` | 1 |
-| 데이터 메모리 정렬 오류 | `mem_misaligned` | 1 |
-| 데이터 메모리 읽기 값 (load 확장 후) | `mem_rdata` | 32 |
+| 데이터 메모리 정렬 오류 (`lsu` 출력) | `mem_misaligned` | 1 |
+| 데이터 메모리 읽기 값 (`lsu`에서 load 확장 후) | `mem_rdata` | 32 |
 | WB MUX 출력 (`rd`에 쓸 값) | `wb_data` | 32 |
+
+- 코어 ↔ 메모리 포트 (`rv32i_core` 포트이자 `rv32i_sc`의 wire): 앞머리 `imem_`·`dmem_`
+| 포트 | 폭 | 방향 (코어 기준) | 내용 |
+|------|:--:|:--:|------|
+| `imem_addr` | 32 | 출력 | = `pc` |
+| `imem_rdata` | 32 | 입력 | = `inst` |
+| `dmem_re` | 1 | 출력 | `mem_re & ~mem_misaligned` (비동기 RAM은 안 씀, 버스 연결용) |
+| `dmem_addr` | 32 | 출력 | = `alu_result` |
+| `dmem_wstrb` | 4 | 출력 | 쓸 바이트 (0이면 쓰기 없음) |
+| `dmem_wdata` | 32 | 출력 | 바이트 위치로 복제한 `rs2_data` |
+| `dmem_rdata` | 32 | 입력 | 메모리에서 읽은 워드 (확장 전) |
 
 ### 8.2 제어 신호
 - 2절 표의 이름(`reg_we`, `imm_sel`, `a_sel`, `b_sel`, `alu_op`, `mem_re`, `mem_we`, `mem_size`, `wb_sel`, `branch`, `jal`, `jalr`, `illegal`)을 제어 유닛 출력 → 최상위 wire → 각 모듈 입력 포트까지 **같은 이름**으로 쓴다.
@@ -174,7 +192,9 @@ alu u_alu (
 | `alu` (`u_alu`) | `a`→`alu_a`, `b`→`alu_b`, `alu_op`→`alu_op`, `result`→`alu_result` |
 | `control` (`u_control`) | `inst`→`inst`, 제어 신호 13개 → 같은 이름의 wire (`reg_we`, `imm_sel`, `a_sel`, `b_sel`, `alu_op`, `mem_re`, `mem_we`, `mem_size`, `wb_sel`, `branch`, `jal`, `jalr`, `illegal`) |
 | `branch_cmp` (`u_branch_cmp`) | `rs1_data`→`rs1_data`, `rs2_data`→`rs2_data`, `funct3`→`inst[14:12]`, `br_taken`→`br_taken` (실제 분기 = `branch & br_taken`) |
-| `dmem` (`u_dmem`) | `clk`, `mem_re`→`mem_re`, `mem_we`→`mem_we`, `mem_size`→`mem_size`, `addr`→`alu_result`, `wdata`→`rs2_data`, `rdata`→`mem_rdata`, `misaligned`→`mem_misaligned` |
+| `lsu` (`u_lsu`, 코어 안) | `mem_re`→`mem_re`, `mem_we`→`mem_we`, `mem_size`→`mem_size`, `addr`→`alu_result`, `wdata`→`rs2_data`, `rdata`→`mem_rdata`, `misaligned`→`mem_misaligned`, `dmem_wstrb`·`dmem_wdata`·`dmem_rdata`→코어 포트 |
+| `imem` (`u_imem`, `rv32i_sc` 안) | `addr`→`imem_addr`, `inst`→`imem_rdata` |
+| `dmem` (`u_dmem`, `rv32i_sc` 안) | `clk`, `addr`→`dmem_addr`, `wstrb`→`dmem_wstrb`, `wdata`→`dmem_wdata`, `rdata`→`dmem_rdata` |
 | `regfile` (`u_regfile`) | `clk`, `reg_we`→`reg_we`, `rs1_addr`→`inst[19:15]`, `rs2_addr`→`inst[24:20]`, `rd_addr`→`inst[11:7]`, `rd_data`→`wb_data`, `rs1_data`→`rs1_data`, `rs2_data`→`rs2_data` |
 
 ## 9. 검증 방법 (riscv-tests 실행 환경)

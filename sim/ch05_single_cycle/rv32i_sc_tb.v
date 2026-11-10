@@ -38,17 +38,18 @@ module rv32i_sc_tb;
     always @(negedge clk) if (rst_n) begin
         cycles = cycles + 1;
 
-        if (dut.mem_we && dut.alu_result == tohost) begin
-            if (dut.rs2_data == 32'd1)
+        // 코어의 데이터 메모리 포트를 본다: tohost에 sw(wstrb = 1111)
+        if (dut.dmem_wstrb == 4'b1111 && dut.dmem_addr == tohost) begin
+            if (dut.dmem_wdata == 32'd1)
                 $display("PASS: %0s (%0d cycles)", hex, cycles);
             else
-                $display("FAIL: %0s test %0d (tohost=%h, pc=%h)", hex, dut.rs2_data >> 1, dut.rs2_data, dbg_pc);
+                $display("FAIL: %0s test %0d (tohost=%h, pc=%h)", hex, dut.dmem_wdata >> 1, dut.dmem_wdata, dbg_pc);
             $finish;
         end
 
         if (trap) begin
             $display("FAIL: %0s trap at pc=%h inst=%h (illegal=%b misaligned=%b)",
-                     hex, dbg_pc, dut.inst, dut.illegal, dut.mem_misaligned);
+                     hex, dbg_pc, dut.imem_rdata, dut.u_core.illegal, dut.u_core.mem_misaligned);
             $finish;
         end
 
