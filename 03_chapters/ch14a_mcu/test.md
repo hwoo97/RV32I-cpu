@@ -223,3 +223,52 @@ bash sim/ch14a_mcu/run_mcu_tests.sh 0 --gui lw
 | GPIO 쓰고 읽기 → SIMCTL `PUTC`로 "OK" 출력 → `FINISH` 1 | PASS (22사이클) |
 
 회귀: 3단계 rv32ui 40/40, 코어 대기 30 % 40/40, bus_tb PASS (MCU 파일을 추가한 뒤 다시 확인)
+
+## 8. C 펌웨어 — `fw/hello` + UART 해독 테스트벤치
+구성: [fw_tb.v](../../sim/ch14a_mcu/fw_tb.v) = `mcu_top` + SIMCTL(슬롯 15) + **UART 해독기**. 해독기는 시작 비트마다 UART의 `BAUDDIV` 레지스터 값을 읽어 비트 길이를 정하고, 각 비트의 가운데에서 샘플링한다. 해독한 글자는 `UART| ...` 줄로 출력하고, 끝나면 기대 파일(`fw/hex/<프로그램>.exp`)과 한 글자씩 비교한다.
+
+PASS 조건: `main`이 0을 반환(`fw_exit` → SIMCTL `FINISH = 1`) **그리고** UART 출력 = 기대 파일 (CR 무시 → Windows CRLF 체크아웃도 동작). `trap`, `bus_err`, 정지 비트 오류, 시간 초과는 FAIL.
+
+`fw/hello`가 확인하는 것
+| 항목 | 방법 |
+|------|------|
+| `printf` → UART | `%d %u %i %x %X %p %c %s %%`, 폭·`0`·`-` 플래그 (10진 변환은 libgcc 나눗셈) |
+| `.rodata`가 IMEM에 있음 | 문자열을 `lbu`로 IMEM에서 읽음 (데이터 쪽 IMEM 포트) |
+| crt0 | `.data` 초기값 1234 (IMEM → DMEM 복사), `.bss` 0 |
+| GPIO | 테스트벤치가 `gpio_in = {gpio_out[7:0], 8'hC3}`로 되돌림 → `0x5A` 출력 후 `0x5AC3` 읽기 |
+| TIMER | `delay_cycles(1000)`이 1000~1099클럭 |
+
+빌드 (WSL `rv32i`, 펌웨어가 바뀔 때만)
+```bash
+make -C fw/hello
+```
+→ `fw/hex/hello.hex`·`hello.exp` (커밋 — 학교 서버에는 RISC-V gcc가 없음). 보드용은 `make -C fw/hello TARGET=fpga` (커밋 안 함).
+
+실행 방법
+- 이 PC (xsim)
+```bash
+python sim/ch14a_mcu/run_fw_tests.py
+```
+- 학교 서버 (Xcelium) — 일괄
+```bash
+bash sim/ch14a_mcu/run_fw_tests.sh
+```
+- 학교 서버 — 대화형 (SimVision)
+```bash
+bash sim/ch14a_mcu/run_fw_tests.sh 0 --gui hello
+```
+
+| 날짜 | 조건 | 결과 | 사이클 | 비고 |
+|------|------|------|-------:|------|
+| 2026-11-12 | BAUDDIV 9 (비트 10클럭), SIMCTL 대기 0 % | **PASS** | 24,365 | xsim, 191글자. 코드 3,004바이트 |
+| 2026-11-12 | 같은 hex, SIMCTL 대기 50 % | **PASS** | 24,365 | |
+| 2026-11-12 | BAUDDIV 3 / 40으로 다시 빌드 | **PASS** / **PASS** | 14,477 / 81,177 | 해독기가 비트 길이를 따라감 |
+| | | 미검증 | | 학교 서버 Xcelium |
+
+테스트벤치 자체 시험 (기대 파일을 바꿔서)
+| 바꾼 기대 파일 | 결과 |
+|----------------|------|
+| 한 글자 다름 (`beef` → `beeF`) | FAIL, 55번째 글자 |
+| 마지막 줄바꿈 빠짐 | FAIL, 출력이 1글자 많음 |
+| 줄 하나 더 기대 | FAIL, 191번째에서 출력 끝 |
+| 줄바꿈을 CRLF로 | PASS (CR 무시) |

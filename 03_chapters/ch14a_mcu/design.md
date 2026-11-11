@@ -166,7 +166,12 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
 | `uart.c`, `printf.c` | 문자 출력, 최소 `printf` (`%d %u %x %s %c`) — 표준 라이브러리 없이 (`-nostdlib`) |
 | `Makefile` | `-march=rv32i -mabi=ilp32 -O2`, 결과 `imem.hex`(+ 필요하면 `dmem.hex`) |
 - 곱셈·나눗셈 명령어가 없으므로(RV32I) `printf`의 10진 변환은 `libgcc`의 소프트웨어 나눗셈을 쓴다 (`-lgcc`)
-- 펌웨어 위치: 루트 `fw/` (결정 B) — `fw/common/`(crt0·link.ld·mcu.h·uart·printf), `fw/<프로그램>/`(hello, gpio_blink …), `fw/riscv-tests/`(MCU용 riscv-tests 링커)
+- 펌웨어 위치: 루트 `fw/` (결정 B) — `fw/common/`(crt0·link.ld·mcu.h·uart·printf), `fw/<프로그램>/`(hello, gpio_blink …)
+- **구현 (2026-11-12)**: [fw/README.md](../../fw/README.md)
+  - 계획과 달라진 점: 결과는 `imem.hex` 하나 (`.data` 초기값은 IMEM 이미지 안, crt0가 복사 → `dmem.hex` 불필요). MCU용 riscv-tests 환경은 `sim/riscv-tests-env/mcu/`에 둠
+  - 추가: `fwlib.h`(함수 선언), `timer.c`(`timer_now`·`delay_cycles`), `sys.c`(`fw_exit`), `libc_min.c`(gcc가 부를 수 있는 `memset`·`memcpy` 등), `common.mk`(공통 빌드 규칙)
+  - 빌드 대상 두 가지: 시뮬레이션(`-DSIM`, UART 비트 10클럭, 끝나면 SIMCTL에 결과) / 보드(`TARGET=fpga`, 115200, 무한 루프)
+  - 검증: UART 해독 테스트벤치 `sim/ch14a_mcu/fw_tb.v` → [test.md](test.md) 8절
 
 ## 7. 검증 계획
 | 순서 | 대상 | 테스트벤치 | 확인 |

@@ -1,0 +1,8 @@
+Hello, RV32I MCU!
+dec: 12345 -678 4000000000 0
+hex: beef 1234ABCD 0x40002000
+fmt: [   42] [42   ] [-0042] [Z] [ok] 100%
+data: 1234, bss: 0
+gpio: dir 00ff out 005a in 5ac3
+timer: ok
+errors: 0

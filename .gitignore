@@ -28,6 +28,7 @@ xrun.key
 genus.cmd*
 innovus.cmd*
 sim/**/build/
+fw/**/build/
 sim/**/obj_dir/
 *.vcd
 *.fst
@@ -116,4 +117,6 @@ fv/
 *.hex
 # Exception: riscv-tests hex images are committed - the school server has no RISC-V toolchain
 !sim/riscv-tests-hex/**/*.hex
+# Exception: firmware simulation images (built in WSL by make, run on the school server)
+!fw/hex/*.hex
 *.elf
