@@ -87,3 +87,99 @@ bash sim/run_xrun.sh bus_tb rtl/ch14a_mcu/bus_mux.v rtl/ch14a_mcu/apb_bridge.v s
 | 가져오기 주소 검사 없음 | `fetch_err` |
 | DMEM이 아닌 주소에서도 DMEM에 씀 | 읽기 값 |
 - 시험 중 고친 것: 처음에는 프로토콜 검사를 하강 에지에서 했는데, 모형 마스터도 하강 에지에서 요청을 바꿔 실행 순서에 따라 SETUP 사이클을 놓쳤다(테스트벤치의 경쟁 조건) → 검사를 상승 에지(끝난 사이클의 값)로 옮김
+
+## 4. GPIO — `apb_gpio.v`
+실행 방법
+- 이 PC (xsim)
+```bash
+python sim/run_sim.py gpio_tb rtl/ch14a_mcu/apb_gpio.v sim/ch14a_mcu/gpio_tb.v
+```
+- 학교 서버 (Xcelium) — 일괄, 끝에 `--gui`를 붙이면 대화형
+```bash
+bash sim/run_xrun.sh gpio_tb rtl/ch14a_mcu/apb_gpio.v sim/ch14a_mcu/gpio_tb.v
+```
+
+테스트벤치 [gpio_tb.v](../../sim/ch14a_mcu/gpio_tb.v)
+- 한 APB 버스에 GPIO 두 개(`GPIO_W` 16, 32)를 달아 폭이 다른 경우를 같이 확인
+- APB 마스터 태스크는 공용 파일 [apb_master.vh](../../sim/ch14a_mcu/apb_master.vh) (Timer·UART 테스트에서도 씀): SETUP → ACCESS → `PREADY` 대기, 걸린 사이클 수 기록
+- 확인: 리셋 값, 쓰기·읽기(폭 밖 비트는 0), 핀 출력, 입력 동기화(바뀐 핀 값이 2번째 상승 에지 뒤에 보임), 오류(DATA_IN 쓰기·없는 오프셋 → `PSLVERR`, 값 그대로, 읽기 0), SETUP만 있고 ACCESS 없는 전송은 쓰지 않음, 모든 전송 2사이클, 무작위 3,000회
+
+| 날짜 | 결과 | 비고 |
+|------|------|------|
+| 2026-11-12 | **PASS** | xsim, APB 전송 3,026회 |
+| | 미검증 | 학교 서버 Xcelium |
+
+버그 모델
+| 버그 | 결과 |
+|------|------|
+| 동기화 플립플롭 1단 | 검출 (1번째 에지 뒤에 새 값이 보임) |
+| SETUP에서 씀 (`PENABLE` 무시) | 검출 |
+| DATA_IN 쓰기를 오류로 안 봄 | 검출 |
+| DIR 쓰기가 DATA_OUT에 들어감 | 검출 |
+| 주소 일부만 디코드 (아래 4비트) | 검출 (무작위 시험에서 다른 오프셋이 DATA_OUT으로 보임) |
+| ACCESS가 아닐 때도 `PSLVERR` | 검출 안 됨 — **규격 위반이 아님**: APB3에서 `PSLVERR`는 마지막 ACCESS 사이클에만 의미가 있고 브리지도 그때만 본다 |
+
+## 5. TIMER — `apb_timer.v`
+실행 방법
+- 이 PC (xsim)
+```bash
+python sim/run_sim.py timer_tb rtl/ch14a_mcu/apb_timer.v sim/ch14a_mcu/timer_tb.v
+```
+- 학교 서버 (Xcelium) — 일괄, 끝에 `--gui`를 붙이면 대화형
+```bash
+bash sim/run_xrun.sh timer_tb rtl/ch14a_mcu/apb_timer.v sim/ch14a_mcu/timer_tb.v
+```
+
+테스트벤치 [timer_tb.v](../../sim/ch14a_mcu/timer_tb.v)
+- **사이클 단위 기준 모델**: DUT와 같은 상승 에지에서 따로 계산한 COUNT·CTRL·CMP·MATCH를 매 사이클 비교, APB 읽기마다 PRDATA, 전송마다 PSLVERR 비교
+- 정해진 시험: CMP = 10 단발 → EN 뒤 정확히 11번째 에지에 MATCH, AUTO 없이는 계속 셈 / CMP = 4 자동 재시작 → 5클럭마다 일치 / W1C / 같은 사이클의 새 일치가 지우기보다 우선 / irq = IE & MATCH / EN = 0이면 멈춤 / 셀 때도 COUNT 쓰기가 우선, 0xFFFFFFFF 넘김 / 없는 오프셋 오류
+- 무작위 3,000회 (COUNT·CMP는 0~23의 작은 값이라 일치가 자주 생김), 사이사이 0~3 사이클 쉼
+
+| 날짜 | 결과 | 비고 |
+|------|------|------|
+| 2026-11-12 | **PASS** | xsim, 읽기 비교 1,473회, 일치 127회 |
+| | 미검증 | 학교 서버 Xcelium |
+
+버그 모델 (모두 검출)
+| 버그 | 잡은 검사 |
+|------|-----------|
+| 자동 재시작 값이 1 (주기가 1 짧음) | 매 사이클 COUNT 비교 |
+| EN = 0인데도 일치 판정 | MATCH 비교 |
+| 지우기가 새 일치보다 우선 | "set wins over clear" 시험 |
+| STATUS에 0을 써도 지워짐 (W1C 아님) | MATCH 비교 (무작위) |
+| irq가 IE를 보지 않음 | irq 비교 |
+| 셀 때는 COUNT 쓰기가 무시됨 | COUNT 비교 |
+
+## 6. UART — `apb_uart.v`
+실행 방법
+- 이 PC (xsim)
+```bash
+python sim/run_sim.py uart_tb rtl/ch14a_mcu/apb_uart.v sim/ch14a_mcu/uart_tb.v
+```
+- 학교 서버 (Xcelium) — 일괄, 끝에 `--gui`를 붙이면 대화형
+```bash
+bash sim/run_xrun.sh uart_tb rtl/ch14a_mcu/apb_uart.v sim/ch14a_mcu/uart_tb.v
+```
+
+테스트벤치 [uart_tb.v](../../sim/ch14a_mcu/uart_tb.v)
+- **송신 모니터**: `uart_tx`의 시작 비트 하강 에지부터 **자기 시간 기준**(비트 중앙)으로 프레임을 해독해 예상 바이트와 비교, 시작·정지 비트와 정지 비트 길이 확인
+- **수신 드라이버**: 비트 시간을 바꿔(±3 %) 8N1 프레임 전송, 정지 비트 0(프레임 오류), 2클럭 글리치
+- **루프백**: `uart_rx = uart_tx`로 BAUDDIV 3·5·16·100에서 무작위 40바이트씩, STATUS를 폴링하며 보내고 받기 (펌웨어와 같은 방식)
+- 정해진 시험: 리셋 값, 방향 틀린 접근·없는 오프셋 오류, 1바이트 송신(아래 8비트만), 버퍼(2번째 바이트는 대기 → `TX_FULL`, 3번째는 무시), 수신·`RX_VALID` 지우기, 오버런(새 바이트로 바뀜, STATUS 읽으면 지워짐), 프레임 오류, 글리치 무시
+
+| 날짜 | 결과 | 비고 |
+|------|------|------|
+| 2026-11-12 | **PASS** | xsim, 송신 프레임 163개 확인 (정해진 시험 3 + 루프백 160) |
+| | 미검증 | 학교 서버 Xcelium |
+
+버그 모델 (모두 검출)
+| 버그 | 잡은 검사 |
+|------|-----------|
+| 수신 비트 순서 반대 (MSB 먼저) | 수신 데이터 (0x3C는 앞뒤가 같아 통과, 다음 바이트에서 검출) |
+| 비트 중앙이 아니라 경계에서 샘플 | 글리치, ±3 % 수신 |
+| 송신 버퍼가 차 있어도 덮어씀 | 송신 모니터 (0x80 대신 0xFF) |
+| 오버런 표시 없음 | STATUS |
+| 정지 비트 검사 없음 | 프레임 오류 시험 |
+| 글리치를 시작 비트로 받음 | 글리치 시험, 루프백 |
+| 송신 정지 비트 빠짐 | 송신 모니터 (정지 비트) |
+| RXDATA를 읽어도 RX_VALID 유지 | STATUS |
