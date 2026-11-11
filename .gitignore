@@ -37,6 +37,13 @@ sim/**/obj_dir/
 
 # Synthesis / PnR / equivalence-check tool output (only summaries are kept in docs)
 syn/**/runs/
+# Reports / outputs downloaded from the server next to the scripts (keep local only)
+syn/**/report/
+syn/**/mapped/
+syn/**/unmapped/
+syn/**/log/
+pnr/**/report*/
+*.stats.dat
 syn/**/out/
 pnr/**/runs/
 pnr/**/out/

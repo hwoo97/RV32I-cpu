@@ -1,7 +1,9 @@
 #####################################################################
 # Timing constraints for rv32i_core (ch05 single cycle)
-#  - CLK_PERIOD is set in genus.tcl (run_syn.sh argument, default 10 ns)
-#  - Memories are outside the core, so the memory access time is split into I/O delays (see README sec. 2)
+#  - CLK_PERIOD is set by the caller before sourcing this file:
+#      synthesis (genus.tcl): CLK_PERIOD = TARGET_PERIOD x SYN_MARGIN (default 10 x 0.8 = 8 ns)
+#      PnR (later)          : CLK_PERIOD = TARGET_PERIOD (the real target, with propagated clocks)
+#  - Memories are outside the core, so the memory access time is split into I/O delays (see README sec. 2-1)
 #
 #   What happens in one cycle (single cycle):
 #   pc (flop) -> imem_addr -[imem read T_MEM]-> imem_rdata -> decode/regfile/ALU -> dmem_addr

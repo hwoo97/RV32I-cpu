@@ -65,7 +65,11 @@ xrun -f sim/ch05_single_cycle/rv32i_sc.f -access +rwc -gui -input sim/ch05_singl
 | 2026-11-10 | `rv32i_sc` | **40 / 40 PASS** | `bash sim/run_riscv_tests.sh`. 테스트별 사이클 수가 xsim 결과와 모두 같음 (두 시뮬레이터에서 동작 일치) |
 
 ## 합성 결과
-- 스크립트 준비: [syn/ch05_single_cycle](../../syn/ch05_single_cycle/README.md) — 결과는 그 README에 기록 (미실행)
+- 자세한 결과: [syn/ch05_single_cycle README](../../syn/ch05_single_cycle/README.md) 4절
+
+| 날짜 | 대상 | 합성 클럭 | 셀 면적 (µm²) | 셀 수 | WNS | 비고 |
+|------|------|-----:|-------------:|------:|----:|------|
+| 2026-11-11 | `rv32i_core` | 10 ns (목표 미정, 여유 없음) | 16,182.8 | 4,369 | 0.000 (만족) | gpdk045 slow. 탐색용 첫 합성. 레지스터 파일 73 %. 이후 합성은 목표 × 0.8 주기로 |
 
 ## 문제와 해결
 - `run_riscv_tests.py`에서 xsim에 `-testplusarg HEX=…`를 넘기면 결과가 안 나옴 → Windows `.bat`가 인자 안의 `=`에서 인자를 나눔 → 인자를 따옴표로 감싸 문자열로 전달
