@@ -1,0 +1,24 @@
+# MCU memory map - the single source of all addresses (03_chapters/ch14a_mcu/design.md sec. 2, 2.3)
+# After editing, run:  python tools/gen_memmap.py
+# It regenerates (do not edit those by hand):
+#   rtl/ch14a_mcu/mcu_memmap.vh   Verilog `define for the address decoder
+#   fw/common/memmap.h            C #define for firmware
+#   fw/common/memmap.ld           linker MEMORY regions
+#
+# Columns: name  base  size  kind  [options]
+#   base : hex address, must be a multiple of size
+#   size : power of two, suffix K or M allowed (16K = 0x4000)
+#   kind : mem  = memory region (goes to the linker MEMORY block), attr = linker attributes (rx, rw, ...)
+#          bus  = bus window that contains slaves (APB)
+#          apb  = APB slave; must lie inside the APB bus window; slot = base[15:12]
+#   options: sim  = simulation only (testbench slave, not in the MCU RTL)
+
+IMEM    0x00000000  16K  mem  attr=rx
+DMEM    0x10000000  16K  mem  attr=rw
+
+APB     0x40000000  64K  bus
+
+GPIO    0x40000000  4K   apb
+TIMER   0x40001000  4K   apb
+UART    0x40002000  4K   apb
+SIMCTL  0x4000F000  4K   apb  sim

@@ -70,6 +70,7 @@ C 프로그램은 문자열 같은 상수(`.rodata`)와 초기값 있는 전역 
 | `fw/common/memmap.ld` | 링커 스크립트의 `MEMORY { IMEM ..., DMEM ... }` |
 - 레지스터 오프셋(주변장치 안)은 주변장치 RTL과 `mcu.h`에 두고, 주소 표에는 영역 주소만 둔다
 - 만들어진 파일도 커밋한다 (툴체인 없는 학교 서버에서 그대로 쓰도록). 스크립트를 다시 돌려 차이가 없는지로 어긋남을 점검한다
+- **구현 (2026-11-12)**: [fw/common/memmap.txt](../../fw/common/memmap.txt) (`이름 시작주소 크기 종류 [옵션]`), [tools/gen_memmap.py](../../tools/gen_memmap.py) (`--check` = 생성 파일이 표와 맞는지만 확인). Verilog는 `` `MM_<이름>_BASE/_SIZE/_AW/_HIT(a)/_SLOT``, C는 `<이름>_BASE/_SIZE`(어셈블리에서도 쓰도록 `u` 접미사 없음) → [test.md](test.md) 2절
 
 ## 3. 코어 변경: 대기(stall)
 APB는 한 번 접근에 최소 2사이클이 걸린다. 단일 사이클 코어는 매 사이클 명령어를 하나씩 끝내므로, **응답이 올 때까지 같은 명령어를 붙잡아 두는 입력**을 추가한다.
@@ -104,7 +105,8 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
   - ACCESS 사이클: `PENABLE = 1`, `PREADY`가 1이면 끝 → `dmem_ready = 1`
 - `PADDR`·`PWRITE`·`PWDATA`는 코어가 같은 명령어를 붙잡고 있는 동안 그대로이므로 별도 레지스터 없이 코어 출력을 그대로 쓴다 (단일 사이클 코어라 가능. 파이프라인 장에서는 래치 필요)
 - APB3에는 바이트 쓰기 신호(`PSTRB`, APB4)가 없다 → **주변장치는 word(`lw`·`sw`) 접근만** 지원한다. `sb`·`sh`로 주변장치에 쓰면 정의하지 않은 동작 (펌웨어는 `volatile uint32_t *`로 접근)
-- `PSLVERR`는 이번 단계에서 무시하고, 6장 예외에서 버스 오류 트랩으로 연결한다
+- `PSLVERR`는 `bus_err`(data_err)로 모아 MCU 출력으로 내고, 6장 예외에서 버스 오류 트랩으로 연결한다
+- **구현 (2026-11-12)**: `bus_mux.v`(디코더, 응답 MUX, `dmem_ready`, `data_err`·`fetch_err`), `apb_bridge.v`(상태 IDLE·ACCESS 두 개, SETUP = IDLE에서 요청이 보인 사이클, 슬롯별 `PSEL`과 응답 선택). 주변장치에 sb·sh 쓰기는 APB 전송 없이 바로 `data_err`. 빈 슬롯은 MCU 최상위가 `PREADY = 1`·`PSLVERR = 1`로 묶는다 → [test.md](test.md) 3절
 
 ## 5. 주변장치 레지스터 맵 (초안)
 모든 레지스터는 32비트, 오프셋은 각 주변장치 기준 주소에서의 거리. R = 읽기, W = 쓰기, W1C = 1을 쓰면 0이 됨.
