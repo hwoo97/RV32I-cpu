@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
-// imm_gen 자가 검사 테스트벤치 (decode.md 7절 규약: imm_sel 0:I 1:S 2:B 3:U 4:J, 그 밖은 0)
-// 기댓값: riscv-tests·어셈블러로 확인한 실제 명령어 11개 + 무작위 60개 + 정의 안 된 imm_sel 3개.
-// 기댓값은 명세의 비트 결합식으로 미리 계산해 넣었다 (테스트벤치 안에는 정답 회로가 없음).
+// Self-checking testbench for imm_gen (decode.md sec. 7: imm_sel 0:I 1:S 2:B 3:U 4:J, others give 0)
+// Vectors: 11 real instructions checked with riscv-tests/assembler + 60 random + 3 undefined imm_sel values.
+// Expected values were precomputed from the spec's bit-concatenation rules (no reference circuit in the testbench).
 module imm_gen_tb;
     localparam N = 74;
     reg  [31:0] vi [0:N-1];

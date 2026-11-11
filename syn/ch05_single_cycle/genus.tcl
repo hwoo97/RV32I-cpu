@@ -1,9 +1,9 @@
 #####################################################################
-# ch05 단일 사이클 CPU 코어(rv32i_core) Genus 합성 — gpdk045, slow 코너
-#  - 실행: bash syn/ch05_single_cycle/run_syn.sh [클럭 주기 ns]   (기본 10 ns)
-#    run_syn.sh가 ROOT·SYN_DIR·CLK_PERIOD 환경 변수를 넘기고, 실행 폴더 runs/clk<주기>ns/ 에서 돈다
-#  - 메모리(imem·dmem)는 합성하지 않는다. 메모리 접근 시간은 SDC의 입출력 지연으로 모델링
-#  - 결과(리포트·넷리스트·로그)는 runs/ 아래에 생기고 커밋하지 않는다 (요약만 README에 기록)
+# Genus synthesis of the ch05 single-cycle CPU core (rv32i_core) - gpdk045, slow corner
+#  - Run: bash syn/ch05_single_cycle/run_syn.sh [clock period ns]   (default 10 ns)
+#    run_syn.sh passes ROOT, SYN_DIR, CLK_PERIOD as environment variables and runs in runs/clk<period>ns/
+#  - Memories (imem, dmem) are not synthesized. Their access time is modeled by SDC I/O delays
+#  - Outputs (reports, netlist, logs) go under runs/ and are not committed (summary only in README)
 #####################################################################
 
 set ROOT       $::env(ROOT)
@@ -27,16 +27,16 @@ puts "TOP = $TOP_DESIGN, CLK_PERIOD = $CLK_PERIOD ns"
 # Preset global variables and attributes
 ######################################################################
 
-set_db auto_ungroup none              ;# 모듈 계층 유지 → 모듈별 면적을 볼 수 있음
+set_db auto_ungroup none              ;# keep module hierarchy -> per-module area is visible
 set_db max_cpus_per_server 2
 
 set_db syn_generic_effort high
 set_db syn_map_effort     high
 set_db syn_opt_effort     high
 
-source $ROOT/syn/common/gpdk045.tcl   ;# read_libs (+ LEF·QRC)
+source $ROOT/syn/common/gpdk045.tcl   ;# read_libs (+ LEF, QRC)
 
-set_db init_hdl_search_path $RTL_DIR  ;# `include "rv32i_defs.vh"도 여기서 찾음
+set_db init_hdl_search_path $RTL_DIR  ;# `include "rv32i_defs.vh" is found here too
 set_db hdl_array_naming_style %s_%d
 
 ####################################################################
@@ -119,14 +119,14 @@ report_timing -nworst 10 -net  > ${RPT_DIR}/20_${TOP_DESIGN}_timing.rpt
 report_summary
 
 ####################################################################
-## Write out (netlist, SDC, SDF, LEC do 파일)
+## Write out (netlist, SDC, SDF, LEC do file)
 ####################################################################
 
 write_design -basename ${MAPPED_DIR}/${TOP_DESIGN}_mapped
 write_hdl > ${MAPPED_DIR}/${TOP_DESIGN}_syn_final.v
 write_sdc > ${MAPPED_DIR}/${TOP_DESIGN}_syn_final.sdc
 write_sdf -timescale ns -nonegchecks -recrem split -edges check_edge -setuphold split > ${MAPPED_DIR}/${TOP_DESIGN}_delays.sdf
-# LEC(교수님 서버)용: golden = 읽어 들인 RTL, revised = 합성 넷리스트
+# For LEC (professor's server): golden = RTL read in, revised = synthesized netlist
 write_do_lec -revised_design ${MAPPED_DIR}/${TOP_DESIGN}_syn_final.v -logfile ${LOG_DIR}/rtl2gate_lec.log > ${MAPPED_DIR}/rtl2gate.do
 
 puts "Final Runtime & Memory."

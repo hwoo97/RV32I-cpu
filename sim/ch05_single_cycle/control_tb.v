@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
-// control 자가 검사 테스트벤치 (decode.md 3~6절, rv32i_defs.vh 값 기준)
-// 벡터: RV32I 명령어 41개(어셈블러로 인코딩) + 정의되지 않은·지원하지 않는 명령어 19개.
-// 기댓값은 decode.md 표를 옮긴 Python 기준 모델로 미리 계산했다.
-// 출력 13개를 한 줄로 묶어 비교하고, 그 명령어에서 의미 없는 칸("—")은 마스크로 비교에서 뺀다.
-// 묶는 순서(위→아래): reg_we imm_sel a_sel b_sel alu_op mem_re mem_we mem_size wb_sel branch jal jalr illegal
+// Self-checking testbench for control (decode.md sec. 3-6, values from rv32i_defs.vh)
+// Vectors: 41 RV32I instructions (encoded by the assembler) + 19 undefined/unsupported instructions.
+// Expected values were precomputed with a Python reference model of the decode.md tables.
+// The 13 outputs are packed into one vector; don't-care fields for an instruction are masked out of the compare.
+// Packing order (MSB -> LSB): reg_we imm_sel a_sel b_sel alu_op mem_re mem_we mem_size wb_sel branch jal jalr illegal
 module control_tb;
     localparam N = 60;
     reg  [31:0] vi [0:N-1];

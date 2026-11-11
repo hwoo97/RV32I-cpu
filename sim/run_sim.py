@@ -1,12 +1,12 @@
-"""Vivado xsim으로 테스트벤치를 실행하고 PASS/FAIL을 판정한다.
+"""Runs a testbench with Vivado xsim and judges PASS/FAIL.
 
-    python sim/run_sim.py <테스트벤치 모듈 이름> <Verilog 파일...> [--gui] [--timeout 초]
+    python sim/run_sim.py <testbench module> <Verilog files...> [--gui] [--timeout sec]
 
-예) python sim/run_sim.py cnt_tb rtl/ch02_logic/cnt.v sim/ch02_logic/cnt_tb.v
+e.g. python sim/run_sim.py cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v
 
-- 빌드 결과는 sim/build/<테스트벤치>/ 에 만든다 (.gitignore 대상).
-- 시뮬레이션 출력에 "PASS"가 있고 "FAIL"·"ERROR"가 없으면 통과로 본다.
-- --gui: 파형 창(xsim GUI)을 연다. 이때는 판정하지 않는다.
+- Build output goes to sim/build/<testbench>/ (git-ignored).
+- Passes if the simulation output contains "PASS" and no "FAIL"/"ERROR".
+- --gui: opens the waveform window (xsim GUI); no pass/fail judgement in this mode.
 """
 import argparse
 import os
@@ -28,15 +28,15 @@ def run(cmd, cwd, timeout):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="xsim 실행·판정")
-    parser.add_argument("top", help="테스트벤치 최상위 모듈 이름")
-    parser.add_argument("files", nargs="+", help="Verilog 파일들")
-    parser.add_argument("--gui", action="store_true", help="파형 창 열기")
-    parser.add_argument("--timeout", type=int, default=300, help="단계별 제한 시간(초)")
+    parser = argparse.ArgumentParser(description="run xsim and judge")
+    parser.add_argument("top", help="testbench top module name")
+    parser.add_argument("files", nargs="+", help="Verilog files")
+    parser.add_argument("--gui", action="store_true", help="open the waveform window")
+    parser.add_argument("--timeout", type=int, default=300, help="time limit per step (s)")
     args = parser.parse_args()
 
     files = [os.path.abspath(f) for f in args.files]
-    # `include 파일은 각 소스 파일이 있는 폴더에서 찾는다
+    # `include files are searched in the folder of each source file
     incdirs = []
     for d in dict.fromkeys(os.path.dirname(f) for f in files):
         incdirs += ["-i", d]
@@ -54,11 +54,11 @@ def main():
         try:
             code, output = run(cmd, build, args.timeout)
         except subprocess.TimeoutExpired:
-            sys.exit(f"FAIL: {name} 시간 초과 ({args.timeout}초)")
+            sys.exit(f"FAIL: {name} timed out ({args.timeout} s)")
         errors = [line for line in output.splitlines() if line.startswith("ERROR")]
         if code != 0 or errors:
             print("\n".join(errors) or output[-2000:])
-            sys.exit(f"FAIL: {name} 단계 오류 (로그: {build})")
+            sys.exit(f"FAIL: {name} step error (log: {build})")
 
     if args.gui:
         return
@@ -66,7 +66,7 @@ def main():
     print("\n".join(sim_lines))
     if any("FAIL" in line for line in sim_lines) or not any("PASS" in line for line in sim_lines):
         sys.exit(f"FAIL: {args.top}")
-    print(f"통과: {args.top}")
+    print(f"Passed: {args.top}")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,14 @@
 #####################################################################
-# gpdk045 라이브러리 설정 (Genus 공통) — 장별 genus.tcl이 source 한다
-#  - PDK 위치는 공개 저장소에 적지 않고 환경 변수 GPDK045_DIR로 받는다
-#    (GPDK045 폴더 = 그 아래에 digital/gsclib045_all_v4.4/ 가 있는 폴더)
-#    csh:  setenv GPDK045_DIR <GPDK045 폴더의 절대 경로>
-#  - 코너: slow(최악) 한 가지로 setup 타이밍을 본다
-#  - USE_PHYS = 1이면 LEF·QRC도 읽어 배선 지연을 더 현실적으로 추정 (기본 1)
+# gpdk045 library setup (shared by Genus scripts) - sourced by each chapter's genus.tcl
+#  - The PDK location is not written in the public repo; it comes from the GPDK045_DIR environment variable
+#    (GPDK045 folder = the folder that contains digital/gsclib045_all_v4.4/)
+#    csh:  setenv GPDK045_DIR <absolute path of the GPDK045 folder>
+#  - Corner: slow (worst case) only, for setup timing
+#  - USE_PHYS = 1 also reads LEF and QRC for a more realistic wire delay estimate (default 1)
 #####################################################################
 
 if {![info exists ::env(GPDK045_DIR)]} {
-    puts "ERROR: 환경 변수 GPDK045_DIR가 없음 (csh: setenv GPDK045_DIR <GPDK045 폴더>)"
+    puts "ERROR: environment variable GPDK045_DIR is not set (csh: setenv GPDK045_DIR <GPDK045 folder>)"
     exit 1
 }
 set GPDK      $::env(GPDK045_DIR)
@@ -21,7 +21,7 @@ set LEF_LIST   {gsclib045_tech.lef gsclib045_macro.lef}
 set QRC_LIST   {gpdk045.tch}
 
 if {![file exists $STD_DIR/timing/[lindex $LIB_LIST 0]]} {
-    puts "ERROR: $STD_DIR/timing/[lindex $LIB_LIST 0] 이 없음 — GPDK045_DIR 확인"
+    puts "ERROR: $STD_DIR/timing/[lindex $LIB_LIST 0] not found - check GPDK045_DIR"
     exit 1
 }
 

@@ -1,21 +1,21 @@
 `timescale 1ns/1ps
 
-// RV32I 단일 사이클 CPU + 메모리 — 시뮬레이션·FPGA용 최상위
-//  - rv32i_core(CPU 본체)에 명령어 메모리(imem)와 데이터 메모리(dmem)를 붙인다
-//  - ASIC 합성은 메모리 매크로가 없어서 rv32i_core만 한다 (syn/ch05_single_cycle)
-//  - 하버드 구조: imem과 dmem이 따로 있다. 둘 다 비동기 읽기, dmem은 clk 상승 에지에 쓰기
+// RV32I single-cycle CPU + memories - top level for simulation and FPGA
+//  - Attaches instruction memory (imem) and data memory (dmem) to rv32i_core (the CPU)
+//  - ASIC synthesis covers rv32i_core only, since there are no memory macros (syn/ch05_single_cycle)
+//  - Harvard: separate imem and dmem. Both read asynchronously; dmem writes on the clk rising edge
 module rv32i_sc #(
     parameter RESET_PC  = 32'h0000_0000,
-    parameter ADDR_BITS = 13,              // imem·dmem 각각 2^13 = 8 KB
+    parameter ADDR_BITS = 13,              // imem and dmem each 2^13 = 8 KB
     parameter IMEM_INIT = "",
     parameter DMEM_INIT = ""
 ) (
     input         clk,
-    input         rst_n,                   // 0일 때 리셋 (비동기)
-    output [31:0] dbg_pc,                  // 관찰용: 현재 PC
-    output        trap                     // 관찰용: illegal | mem_misaligned
+    input         rst_n,                   // reset when 0 (asynchronous)
+    output [31:0] dbg_pc,                  // observation: current PC
+    output        trap                     // observation: illegal | mem_misaligned
 );
-    // ── 코어 ↔ 메모리 연결 wire (decode.md 8.1) ──
+    // -- Core <-> memory wires (decode.md 8.1) --
     wire [31:0] imem_addr, imem_rdata;
     wire        dmem_re;
     wire [31:0] dmem_addr, dmem_wdata, dmem_rdata;

@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
-// alu 자가 검사 테스트벤치 (decode.md 4절, rv32i_defs.vh의 ALU_* 값 기준)
-// 연산마다 경계값 77조합(0, 1, 0x7fffffff, 0x80000000, 0xffffffff, 시프트 양 0·1·31·32 등) + 무작위 25개,
-// 정의되지 않은 alu_op 2개. 기댓값은 명세 정의대로 Python으로 미리 계산했다.
+// Self-checking testbench for alu (decode.md sec. 4, ALU_* values from rv32i_defs.vh)
+// Per operation: 77 corner combinations (0, 1, 0x7fffffff, 0x80000000, 0xffffffff, shift amounts 0/1/31/32 ...) + 25 random,
+// plus 2 undefined alu_op values. Expected values were precomputed in Python from the spec.
 module alu_tb;
     localparam N = 1022;
     reg  [3:0]  vo [0:N-1];
@@ -1050,7 +1050,7 @@ module alu_tb;
             a = va[k]; b = vb[k]; alu_op = vo[k];
             #1;
             if (result !== ve[k]) begin
-                if (fail_by_op[alu_op] < 3)   // 연산마다 처음 3개만 출력
+                if (fail_by_op[alu_op] < 3)   // print only the first 3 per operation
                     $display("FAIL: alu_op=%0d a=%h b=%h -> result=%h (expected %h)", alu_op, a, b, result, ve[k]);
                 fail_by_op[alu_op] = fail_by_op[alu_op] + 1;
                 errors = errors + 1;

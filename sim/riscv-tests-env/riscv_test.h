@@ -1,10 +1,10 @@
-// riscv-tests용 최소 테스트 환경 — CSR·트랩이 없는 3단계 RV32I 단일 사이클 CPU 전용
-// riscv-tests 기본 환경(env/p/riscv_test.h)은 시작할 때 CSR(mtvec·mstatus 등)과 mret을 쓰고,
-// PASS 때 ecall을 쓴다. 이 CPU는 아직 이것들이 없어서, 같은 매크로 이름으로 단순한 동작만 정의한다.
-//  - 시작: 레지스터 x1~x31을 0으로 채우고 바로 테스트로 들어간다
-//  - 판정: tohost 주소에 값을 쓰고 제자리 루프 (1 = PASS, (실패한 테스트 번호 << 1) | 1 = FAIL)
-//  - 테스트벤치가 tohost 쓰기를 감시해 판정한다
-// 6장(CSR·트랩)을 구현하면 riscv-tests 기본 환경(env/p)으로 다시 확인한다.
+// Minimal test environment for riscv-tests - for the stage 3 RV32I single-cycle CPU without CSRs/traps
+// The default riscv-tests environment (env/p/riscv_test.h) uses CSRs (mtvec, mstatus ...) and mret at startup
+// and ecall on PASS. This CPU has none of these yet, so the same macro names are defined with simple behavior.
+//  - Start: clear x1..x31 and jump straight into the test
+//  - Result: write to the tohost address and loop in place (1 = PASS, (failed test number << 1) | 1 = FAIL)
+//  - The testbench watches writes to tohost to decide pass/fail
+// After ch6 (CSRs, traps), re-check with the default riscv-tests environment (env/p).
 #ifndef _ENV_RV32I_MINIMAL_H
 #define _ENV_RV32I_MINIMAL_H
 

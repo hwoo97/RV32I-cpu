@@ -1,10 +1,10 @@
 #!/bin/bash
-# rv32ui 테스트를 최소 테스트 환경으로 빌드해 워드 hex로 변환한다 (WSL rv32i 배포판에서 실행)
-#   bash sim/riscv-tests-env/build_rv32ui.sh [riscv-tests 경로]
-# 결과: sim/riscv-tests-hex/rv32ui/<테스트>.hex  (커밋함 — 학교 서버에 RISC-V 툴체인이 없어서)
-#       sim/build/rv32ui/<테스트>.elf, .dump    (커밋하지 않음, 디버깅용)
-# riscv-tests는 BSD 라이선스: 바이너리를 배포할 때 저작권 고지를 함께 둔다 (LICENSE-riscv-tests 복사)
-# 제외: fence_i (Zifencei 확장), ma_data (정렬 안 된 접근 — 6장 트랩 이후)
+# Builds the rv32ui tests with the minimal test environment and converts them to word hex (run in the WSL rv32i distro)
+#   bash sim/riscv-tests-env/build_rv32ui.sh [path to riscv-tests]
+# Output: sim/riscv-tests-hex/rv32ui/<test>.hex  (committed - the school server has no RISC-V toolchain)
+#         sim/build/rv32ui/<test>.elf, .dump    (not committed, for debugging)
+# riscv-tests is BSD licensed: distribute the copyright notice with the binaries (copies LICENSE-riscv-tests)
+# Excluded: fence_i (Zifencei extension), ma_data (misaligned access - after ch6 traps)
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"

@@ -1,19 +1,19 @@
 #!/bin/bash
-# ch05 단일 사이클 CPU 코어(rv32i_core) Genus 합성 (학교 서버)
+# Genus synthesis of the ch05 single-cycle CPU core (rv32i_core) (school server)
 #
-#   bash syn/ch05_single_cycle/run_syn.sh            # 클럭 주기 10 ns
-#   bash syn/ch05_single_cycle/run_syn.sh 5          # 클럭 주기 5 ns
+#   bash syn/ch05_single_cycle/run_syn.sh            # clock period 10 ns
+#   bash syn/ch05_single_cycle/run_syn.sh 5          # clock period 5 ns
 #
-# - 먼저 GPDK045_DIR 환경 변수를 설정한다 (csh: setenv GPDK045_DIR <GPDK045 폴더>)
-# - 실행 폴더: syn/ch05_single_cycle/runs/clk<주기>ns/ (log·report·mapped·unmapped, 커밋 안 함)
-# - 끝나면 면적·slack 요약을 출력한다
+# - Set the GPDK045_DIR environment variable first (csh: setenv GPDK045_DIR <GPDK045 folder>)
+# - Run folder: syn/ch05_single_cycle/runs/clk<period>ns/ (log, report, mapped, unmapped; not committed)
+# - Prints an area / slack summary at the end
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SYN_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLK_PERIOD="${1:-10.0}"
 
 if [ -z "$GPDK045_DIR" ]; then
-    echo "ERROR: GPDK045_DIR가 없음 → csh에서 setenv GPDK045_DIR <GPDK045 폴더> 후 다시 실행"
+    echo "ERROR: GPDK045_DIR is not set -> in csh: setenv GPDK045_DIR <GPDK045 folder>, then run again"
     exit 1
 fi
 
@@ -22,24 +22,24 @@ rm -rf "$RUN" && mkdir -p "$RUN/log" && cd "$RUN" || exit 1
 
 export ROOT SYN_DIR CLK_PERIOD
 echo "Syn Start : $(date)" | tee cds_syn_runtime
-# 진행 상황은 화면에 그대로 보인다. stdin을 /dev/null로 두어, 스크립트 중간에 오류가 나도
-# Genus 프롬프트에서 멈춰 기다리지 않고 끝나게 한다
+# Progress is shown on screen. stdin is /dev/null so that if the script fails midway,
+# Genus exits instead of waiting at its prompt
 genus -f "$SYN_DIR/genus.tcl" -log log/genus.log < /dev/null
 STATUS=$?
 echo "Syn End   : $(date)" | tee -a cds_syn_runtime
 
-# ── 요약 ──
+# -- Summary --
 LOG="$(ls log/genus.log* 2>/dev/null | head -1)"
 if [ $STATUS -ne 0 ] || ! grep -q "Synthesis Finished" "$LOG" 2>/dev/null; then
-    echo "FAIL: 합성이 끝나지 않음 (로그: $RUN/$LOG)"
+    echo "FAIL: synthesis did not finish (log: $RUN/$LOG)"
     grep -E "^Error|ERROR" "$LOG" 2>/dev/null | head -10
     exit 1
 fi
 echo ""
-echo "== 결과: $RUN/report =="
-echo "-- 면적 (report_area) --"
+echo "== Result: $RUN/report =="
+echo "-- Area (report_area) --"
 grep -E "^\s*rv32i_core\b|^\s*u_" report/09_rv32i_core_area.rpt | head -12
-echo "-- 가장 나쁜 경로 slack (report_timing) --"
+echo "-- Worst path slack (report_timing) --"
 grep -iE "slack" report/20_rv32i_core_timing.rpt | head -3
-echo "-- 위반 (report_constraint) --"
-grep -ciE "VIOLATED" report/06_report_constraint.rpt | sed 's/^/위반 줄 수: /'
+echo "-- Violations (report_constraint) --"
+grep -ciE "VIOLATED" report/06_report_constraint.rpt | sed 's/^/violation lines: /'

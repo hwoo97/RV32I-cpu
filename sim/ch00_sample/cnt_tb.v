@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// 환경 점검용 자가 검사 테스트벤치 — xsim(이 PC)과 Xcelium(학교 서버) 모두에서 실행
+// Self-checking testbench for environment check - runs on both xsim (this PC) and Xcelium (school server)
 module cnt_tb;
     reg        clk = 0, clrn = 0, enable = 0;
     wire [3:0] q;
@@ -18,16 +18,16 @@ module cnt_tb;
 
     initial begin
         #12 clrn = 1;
-        check(4'd0);                       // 리셋 직후 0
+        check(4'd0);                       // 0 right after reset
         enable = 1;
         repeat (10) @(posedge clk); #1;
-        check(4'd10);                      // 10번 증가
+        check(4'd10);                      // incremented 10 times
         enable = 0;
         repeat (3) @(posedge clk); #1;
-        check(4'd10);                      // enable = 0이면 멈춤
+        check(4'd10);                      // holds when enable = 0
         enable = 1;
         repeat (6) @(posedge clk); #1;
-        check(4'd0);                       // 15 다음 0으로 돌아감
+        check(4'd0);                       // wraps from 15 to 0
         if (errors == 0) $display("PASS");
         $finish;
     end

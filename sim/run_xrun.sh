@@ -1,16 +1,16 @@
 #!/bin/bash
-# Xcelium(xrun)으로 테스트벤치를 실행하고 PASS/FAIL을 판정한다. (학교 서버용, 로그인 셸이 csh여도 bash로 실행됨)
+# Runs a testbench with Xcelium (xrun) and judges PASS/FAIL. (school server; runs in bash even if the login shell is csh)
 #
-#   bash sim/run_xrun.sh <테스트벤치 모듈 이름> <Verilog 파일...> [--gui]
+#   bash sim/run_xrun.sh <testbench module> <Verilog files...> [--gui]
 #
-# 예) bash sim/run_xrun.sh cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v
+# e.g. bash sim/run_xrun.sh cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v
 #
-# - 빌드 결과·로그는 sim/build/<테스트벤치>/ 에 만든다 (.gitignore 대상).
-# - 시뮬레이션 출력에 "PASS"가 있고 "FAIL"·"*E"(Xcelium 오류)가 없으면 통과(종료 코드 0), 아니면 1.
-# - --gui: SimVision 파형 창을 연다. 이때는 판정하지 않는다.
+# - Build output and logs go to sim/build/<testbench>/ (git-ignored).
+# - Passes (exit 0) if the output contains "PASS" and no "FAIL"/"*E" (Xcelium error), else exit 1.
+# - --gui: opens the SimVision waveform window; no pass/fail judgement in this mode.
 
 if [ $# -lt 2 ]; then
-    echo "사용법: bash sim/run_xrun.sh <테스트벤치 모듈> <Verilog 파일...> [--gui]"
+    echo "usage: bash sim/run_xrun.sh <testbench module> <Verilog files...> [--gui]"
     exit 1
 fi
 
@@ -23,7 +23,7 @@ for arg in "$@"; do
     if [ "$arg" = "--gui" ]; then GUI=1; else
         DIR="$(cd "$(dirname "$arg")" && pwd)"
         FILES+=("$DIR/$(basename "$arg")")
-        INCDIRS+=("-incdir" "$DIR")   # `include 파일은 각 소스 파일 폴더에서 찾는다
+        INCDIRS+=("-incdir" "$DIR")   # `include files are searched in each source file's folder
     fi
 done
 
@@ -41,11 +41,11 @@ CODE=$?
 grep -E "PASS|FAIL" xrun.log
 if grep -qE "^xrun: \*E|^\S+: \*E|^\s*\*E" xrun.log; then
     grep -E "\*E" xrun.log | head -10
-    echo "FAIL: $TOP (Xcelium 오류, 로그: $BUILD/xrun.log)"
+    echo "FAIL: $TOP (Xcelium error, log: $BUILD/xrun.log)"
     exit 1
 fi
 if [ $CODE -ne 0 ] || grep -q "FAIL" xrun.log || ! grep -q "PASS" xrun.log; then
-    echo "FAIL: $TOP (로그: $BUILD/xrun.log)"
+    echo "FAIL: $TOP (log: $BUILD/xrun.log)"
     exit 1
 fi
-echo "통과: $TOP"
+echo "Passed: $TOP"

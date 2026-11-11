@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
-// 환경 점검용 4비트 카운터 (1장 교재 예제와 같은 동작: enable일 때 클럭마다 1 증가)
+// 4-bit counter for environment check (same behavior as the ch1 textbook example: +1 per clock when enabled)
 module cnt (
     input            clk,
-    input            clrn,     // 비동기 리셋, 0일 때 리셋
+    input            clrn,     // asynchronous reset, active low
     input            enable,
     output reg [3:0] q
 );

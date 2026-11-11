@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
 `include "rv32i_defs.vh"
 
-// 제어 유닛 — 명령어를 해독해 데이터패스 제어 신호를 만든다 (조합 회로)
-// decode.md 3절(opcode별 신호)·4절(ALU 연산)·5절(분기)·6절(load/store) 표를 그대로 옮긴 것.
-// 3단계(단일 사이클 CPU)에서는 SYSTEM(ecall·ebreak·CSR)과 정의되지 않은 명령어를 모두 illegal로 처리한다.
+// Control unit - decodes the instruction into datapath control signals (combinational)
+// Direct translation of the decode.md tables: sec. 3 (per opcode), 4 (ALU op), 5 (branch), 6 (load/store).
+// In stage 3 (single-cycle CPU), SYSTEM (ecall/ebreak/CSR) and all undefined instructions are illegal.
 module control (
     input      [31:0] inst,
     output reg        reg_we,
@@ -13,7 +13,7 @@ module control (
     output reg [3:0]  alu_op,
     output reg        mem_re,
     output reg        mem_we,
-    output     [2:0]  mem_size,   // load/store 크기 = funct3 (decode.md 6절)
+    output     [2:0]  mem_size,   // load/store size = funct3 (decode.md sec. 6)
     output reg [1:0]  wb_sel,
     output reg        branch,
     output reg        jal,
@@ -26,7 +26,7 @@ module control (
 
     assign mem_size = funct3;
 
-    // funct3 → ALU 연산 (OP와 OP-IMM 공통, inst[30]은 아래에서 따로 처리)
+    // funct3 -> ALU op (shared by OP and OP-IMM; inst[30] is handled separately below)
     reg [3:0] alu_from_funct3;
     always @(*) begin
         case (funct3)
@@ -42,7 +42,7 @@ module control (
     end
 
     always @(*) begin
-        // 기본값: 아무것도 쓰지 않고 다음 명령어로 (= NOP). 모든 출력에 값을 줘서 래치를 막는다.
+        // Defaults: write nothing and go to the next instruction (= NOP). Every output gets a value to avoid latches.
         reg_we  = 1'b0;
         imm_sel = `IMM_I;
         a_sel   = `A_RS1;
@@ -58,7 +58,7 @@ module control (
 
         case (opcode)
             `OP_REG: begin                                   // add sub sll slt sltu xor srl sra or and
-                // funct7은 0000000, 또는 sub·sra일 때만 0100000
+                // funct7 must be 0000000, or 0100000 only for sub/sra
                 if (funct7 == 7'b0000000 ||
                     (funct7 == 7'b0100000 && (funct3 == 3'b000 || funct3 == 3'b101))) begin
                     reg_we = 1'b1;
@@ -68,8 +68,8 @@ module control (
             end
 
             `OP_IMM: begin                                   // addi slti sltiu xori ori andi slli srli srai
-                // addi의 inst[30]은 즉치값 비트 → SUB로 보면 안 됨 (alu_from_funct3는 000을 항상 ADD로)
-                // 시프트는 imm[11:5]가 0000000(slli·srli) 또는 0100000(srai)만 허용
+                // addi's inst[30] is an immediate bit -> must not be treated as SUB (alu_from_funct3 maps 000 to ADD)
+                // shifts allow imm[11:5] = 0000000 (slli/srli) or 0100000 (srai) only
                 if ((funct3 == 3'b001 && funct7 != 7'b0000000) ||
                     (funct3 == 3'b101 && funct7 != 7'b0000000 && funct7 != 7'b0100000))
                     illegal = 1'b1;
@@ -81,43 +81,43 @@ module control (
                 end
             end
 
-            `OP_LOAD: begin                                  // lb lh lw lbu lhu (funct3 011·110·111 없음)
+            `OP_LOAD: begin                                  // lb lh lw lbu lhu (no funct3 011/110/111)
                 if (funct3 == 3'b011 || funct3 == 3'b110 || funct3 == 3'b111)
                     illegal = 1'b1;
                 else begin
                     reg_we  = 1'b1;
                     imm_sel = `IMM_I;
                     b_sel   = `B_IMM;
-                    alu_op  = `ALU_ADD;                      // 주소 = rs1 + imm
+                    alu_op  = `ALU_ADD;                      // address = rs1 + imm
                     mem_re  = 1'b1;
                     wb_sel  = `WB_MEM;
                 end
             end
 
-            `OP_STORE: begin                                 // sb sh sw (funct3 000~010만)
+            `OP_STORE: begin                                 // sb sh sw (funct3 000..010 only)
                 if (funct3[2] || funct3 == 3'b011)
                     illegal = 1'b1;
                 else begin
                     imm_sel = `IMM_S;
                     b_sel   = `B_IMM;
-                    alu_op  = `ALU_ADD;                      // 주소 = rs1 + imm
+                    alu_op  = `ALU_ADD;                      // address = rs1 + imm
                     mem_we  = 1'b1;
                 end
             end
 
-            `OP_BRANCH: begin                                // beq bne blt bge bltu bgeu (funct3 010·011 없음)
+            `OP_BRANCH: begin                                // beq bne blt bge bltu bgeu (no funct3 010/011)
                 if (funct3 == 3'b010 || funct3 == 3'b011)
                     illegal = 1'b1;
                 else begin
                     imm_sel = `IMM_B;
-                    branch  = 1'b1;                          // 성립 여부는 분기 비교기(funct3)가 판단
+                    branch  = 1'b1;                          // taken/not-taken decided by branch_cmp (funct3)
                 end
             end
 
             `OP_LUI: begin
                 reg_we  = 1'b1;
                 imm_sel = `IMM_U;
-                wb_sel  = `WB_IMM;                           // ALU를 거치지 않고 imm을 그대로
+                wb_sel  = `WB_IMM;                           // write imm directly, bypassing the ALU
             end
 
             `OP_AUIPC: begin
@@ -131,8 +131,8 @@ module control (
             `OP_JAL: begin
                 reg_we  = 1'b1;
                 imm_sel = `IMM_J;
-                wb_sel  = `WB_PC4;                           // rd = 돌아올 주소
-                jal     = 1'b1;                              // 다음 PC = PC + imm (PC+imm 덧셈기)
+                wb_sel  = `WB_PC4;                           // rd = return address
+                jal     = 1'b1;                              // next PC = PC + imm (PC+imm adder)
             end
 
             `OP_JALR: begin
@@ -142,19 +142,19 @@ module control (
                     reg_we  = 1'b1;
                     imm_sel = `IMM_I;
                     b_sel   = `B_IMM;
-                    alu_op  = `ALU_ADD;                      // 대상 = rs1 + imm (최상위에서 & ~1)
+                    alu_op  = `ALU_ADD;                      // target = rs1 + imm (& ~1 at the top)
                     wb_sel  = `WB_PC4;
                     jalr    = 1'b1;
                 end
             end
 
             `OP_FENCE: begin
-                if (funct3 != 3'b000)                        // fence.i(001)는 Zifencei 확장 → 지원 안 함
+                if (funct3 != 3'b000)                        // fence.i (001) is Zifencei -> not supported
                     illegal = 1'b1;
-                // fence: 단일 사이클·캐시 없음 → 할 일 없음 (NOP)
+                // fence: single cycle, no cache -> nothing to do (NOP)
             end
 
-            // `OP_SYSTEM (ecall, ebreak, CSR): 3단계에서는 illegal, 6장에서 트랩으로 구현
+            // `OP_SYSTEM (ecall, ebreak, CSR): illegal in stage 3, implemented as traps in ch6
             default:
                 illegal = 1'b1;
         endcase

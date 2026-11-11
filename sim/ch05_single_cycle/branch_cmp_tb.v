@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
-// branch_cmp 자가 검사 테스트벤치 (decode.md 5절)
-// funct3 8가지 × (경계값 7×7 조합 + 무작위 30개, 일부는 a == b). 정의 안 된 funct3(010·011)는 0이어야 함.
-// 기댓값은 Python으로 미리 계산했다.
+// Self-checking testbench for branch_cmp (decode.md sec. 5)
+// 8 funct3 values x (7x7 corner combinations + 30 random, some with a == b). Undefined funct3 (010/011) must give 0.
+// Expected values were precomputed in Python.
 module branch_cmp_tb;
     localparam N = 632;
     reg  [2:0]  vf [0:N-1];

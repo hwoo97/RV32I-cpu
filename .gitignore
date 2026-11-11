@@ -1,4 +1,4 @@
-# 내부 관리 문서 (로컬 전용)
+# Internal docs (local only)
 CLAUDE.md
 HISTORY.md
 
@@ -10,12 +10,12 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-# 시험 중 찍은 사진·로그·대용량 데이터
+# Photos, logs, large data captured during tests
 captures/
 *.log
 dataset/
 
-# 시뮬레이션 출력
+# Simulation output
 sim/**/build/
 sim/**/obj_dir/
 *.vcd
@@ -24,7 +24,7 @@ sim/**/obj_dir/
 *.elf
 *.o
 
-# 합성·PnR·등가성 검사 툴 출력 (요약만 문서로 남김)
+# Synthesis / PnR / equivalence-check tool output (only summaries are kept in docs)
 syn/**/runs/
 syn/**/out/
 pnr/**/runs/
@@ -52,21 +52,21 @@ vivado*.jou
 xsim.dir/
 webtalk*
 
-# 교재 원본 (로컬 전용)
+# Textbook original (local only)
 *.pdf
 
-# 개인 설정 (장치 주소 등)
+# Personal settings (device addresses etc.)
 config.local.*
 **/config.json
 
-# 에디터·OS
+# Editor / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# ── 공개 저장소 보호: PDK·툴 원본 파일 (gpdk045·Cadence 라이선스 대상) ──
-# 표준 셀·기술 파일
+# -- Public repo protection: PDK / tool original files (gpdk045, Cadence license) --
+# Standard cell / technology files
 *.lib
 *.lef
 *.tlef
@@ -76,7 +76,7 @@ Thumbs.db
 *.qrc
 *.captbl
 *.techfile
-# 레이아웃·추출·타이밍 원본
+# Layout / extraction / timing originals
 *.def
 *.gds
 *.gds2
@@ -85,17 +85,17 @@ Thumbs.db
 *.spef
 *.sdf
 *.sdc.gz
-# 합성·PnR 넷리스트와 데이터베이스
+# Synthesis / PnR netlists and databases
 *.vg
 *_netlist.v
 *.enc
 *.enc.dat/
 *.dat/
 fv/
-# 툴 원본 리포트 (요약 표만 문서로 공개)
+# Raw tool reports (only summary tables are published)
 *.rpt
-# 생성된 메모리 이미지 (빌드 스크립트로 다시 만듦)
+# Generated memory images (rebuilt by build scripts)
 *.hex
-# riscv-tests 빌드 결과(hex)는 예외로 커밋 — 학교 서버에 RISC-V 툴체인이 없음
+# Exception: riscv-tests hex images are committed - the school server has no RISC-V toolchain
 !sim/riscv-tests-hex/**/*.hex
 *.elf

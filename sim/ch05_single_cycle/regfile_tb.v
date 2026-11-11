@@ -1,11 +1,11 @@
 `timescale 1ns/1ps
-// regfile 자가 검사 테스트벤치
-// 확인 항목
-//  1) 31개 레지스터에 서로 다른 값을 쓰고 두 읽기 포트로 모두 읽기
-//  2) x0에 써도 0으로 읽힘
-//  3) reg_we = 0이면 쓰지 않음
-//  4) 쓰는 사이클에는 이전 값, 클럭 에지 뒤에는 새 값 (단일 사이클 CPU의 동작)
-//  5) 무작위 쓰기·읽기 2000회를 테스트벤치 안의 기록 표(shadow)와 비교
+// Self-checking testbench for regfile
+// Checks
+//  1) write distinct values to all 31 registers and read them on both read ports
+//  2) writing x0 still reads 0
+//  3) no write when reg_we = 0
+//  4) old value during the write cycle, new value after the clock edge (single-cycle CPU behavior)
+//  5) 2000 random writes/reads compared with a shadow table in the testbench
 module regfile_tb;
     reg         clk = 0;
     reg         reg_we = 0;
@@ -13,7 +13,7 @@ module regfile_tb;
     reg  [31:0] rd_data = 0;
     wire [31:0] rs1_data, rs2_data;
 
-    reg  [31:0] shadow [0:31];   // 지금까지 쓴 값 기록 (x0은 항상 0)
+    reg  [31:0] shadow [0:31];   // record of values written so far (x0 always 0)
     integer     i, errors = 0;
 
     regfile dut (
@@ -37,7 +37,7 @@ module regfile_tb;
         end
     endtask
 
-    // 클럭 하강 에지에서 입력을 바꾸고, 다음 상승 에지에서 쓰기가 일어난다
+    // change inputs on the falling clock edge; the write happens on the next rising edge
     task write_reg(input [4:0] addr, input [31:0] data, input we);
         begin
             @(negedge clk);
@@ -59,19 +59,19 @@ module regfile_tb;
     initial begin
         for (i = 0; i < 32; i = i + 1) shadow[i] = 32'd0;
 
-        // 1) 모든 레지스터에 서로 다른 값 쓰기 → 두 포트로 읽기
+        // 1) write distinct values to all registers -> read on both ports
         for (i = 1; i < 32; i = i + 1) write_reg(i, 32'h1000_0000 * (i % 16) + i * 32'h0101_0101, 1);
         for (i = 0; i < 32; i = i + 1) read_check(i, 31 - i);
 
-        // 2) x0에 쓰기 → 0으로 읽혀야 함
+        // 2) write x0 -> must read 0
         write_reg(0, 32'hdead_beef, 1);
         read_check(0, 0);
 
-        // 3) reg_we = 0이면 쓰지 않음
+        // 3) no write when reg_we = 0
         write_reg(5, 32'hffff_ffff, 0);
         read_check(5, 5);
 
-        // 4) 쓰는 사이클에는 이전 값, 에지 뒤에는 새 값
+        // 4) old value during the write cycle, new value after the edge
         @(negedge clk);
         rd_addr = 7; rd_data = 32'h1234_5678; reg_we = 1;
         rs1_addr = 7; rs2_addr = 7; #1;
@@ -80,7 +80,7 @@ module regfile_tb;
         reg_we = 0; shadow[7] = 32'h1234_5678;
         check(rs1_data, 32'h1234_5678, "rs1_data after edge");
 
-        // 5) 무작위 쓰기·읽기
+        // 5) random writes/reads
         for (i = 0; i < 2000; i = i + 1) begin
             write_reg($random, $random, $random);
             read_check($random, $random);

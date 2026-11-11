@@ -1,17 +1,17 @@
 `timescale 1ns/1ps
-// lsu + dmem 자가 검사 테스트벤치 (decode.md 6절)
-// 코어 안의 lsu(바이트 처리·정렬 검사)와 단순 워드 RAM dmem을 이어 붙여 load/store 동작 전체를 확인한다.
-// 테스트벤치 안에 바이트 단위 기록 표(shadow)를 두고, store할 때 같이 기록해 load 결과와 비교한다.
-// 확인 항목
-//  1) sw → lw (워드 64개)
-//  2) sb를 네 바이트 위치에 → lb(부호 확장)·lbu(0 확장)
-//  3) sh를 두 위치에 → lh·lhu
-//  4) 정렬 안 된 접근: misaligned = 1, store는 메모리를 바꾸지 않음
-//  5) mem_we = 0이면 쓰지 않음
-//  6) 무작위 store·load 4000회 (정렬된 주소)
+// Self-checking testbench for lsu + dmem (decode.md sec. 6)
+// Connects lsu (byte handling, alignment check) to the plain word RAM dmem and checks the whole load/store behavior.
+// A byte-level shadow table in the testbench is updated on every store and compared with load results.
+// Checks
+//  1) sw -> lw (64 words)
+//  2) sb to all four byte lanes -> lb (sign extend) / lbu (zero extend)
+//  3) sh to both halves -> lh / lhu
+//  4) misaligned access: misaligned = 1 and a store does not change memory
+//  5) no write when mem_we = 0
+//  6) 4000 random stores/loads (aligned addresses)
 module dmem_tb;
     localparam SB = 3'b000, SH = 3'b001, SW = 3'b010, LB = 3'b000, LH = 3'b001, LW = 3'b010, LBU = 3'b100, LHU = 3'b101;
-    localparam SPAN = 512;                 // 테스트에 쓰는 주소 범위 (바이트)
+    localparam SPAN = 512;                 // address range used by the test (bytes)
 
     reg         clk = 0;
     reg         mem_re = 0, mem_we = 0;
@@ -48,7 +48,7 @@ module dmem_tb;
         end
     endtask
 
-    // store: 하강 에지에서 입력을 바꾸고 다음 상승 에지에서 쓰기
+    // store: change inputs on the falling edge, write happens on the next rising edge
     task store(input [2:0] size, input [31:0] a, input [31:0] d);
         begin
             @(negedge clk);
@@ -63,7 +63,7 @@ module dmem_tb;
         end
     endtask
 
-    // load: 비동기 읽기라 입력을 바꾼 뒤 조금 기다리면 바로 값이 나온다
+    // load: asynchronous read, so the value is ready shortly after the inputs change
     task load(input [2:0] size, input [31:0] a);
         reg [31:0] exp;
         begin
@@ -83,13 +83,13 @@ module dmem_tb;
 
     initial begin
         for (i = 0; i < SPAN; i = i + 1) shadow[i] = 8'h00;
-        for (i = 0; i < SPAN; i = i + 4) store(SW, i, 32'h0);          // 테스트 범위를 0으로 채움
+        for (i = 0; i < SPAN; i = i + 4) store(SW, i, 32'h0);          // clear the test range
 
-        // 1) sw → lw
+        // 1) sw -> lw
         for (i = 0; i < 256; i = i + 4) store(SW, i, 32'hA5000000 + i * 32'h0001_0103);
         for (i = 0; i < 256; i = i + 4) load(LW, i);
 
-        // 2) sb 네 위치 → lb·lbu (0x80 이상이면 부호 확장 차이가 드러남)
+        // 2) sb to four lanes -> lb / lbu (values >= 0x80 expose sign-extension errors)
         store(SB, 32'h100, 32'hFFFF_FF81);
         store(SB, 32'h101, 32'h0000_007F);
         store(SB, 32'h102, 32'h1234_56C3);
@@ -97,12 +97,12 @@ module dmem_tb;
         for (i = 32'h100; i < 32'h104; i = i + 1) begin load(LB, i); load(LBU, i); end
         load(LW, 32'h100);
 
-        // 3) sh 두 위치 → lh·lhu
+        // 3) sh to two positions -> lh / lhu
         store(SH, 32'h108, 32'h0000_8001);
         store(SH, 32'h10A, 32'hFFFF_7FFE);
         load(LH, 32'h108); load(LHU, 32'h108); load(LH, 32'h10A); load(LHU, 32'h10A); load(LW, 32'h108);
 
-        // 4) 정렬 안 된 접근
+        // 4) misaligned access
         for (i = 1; i < 4; i = i + 1) begin
             mem_re = 1; mem_size = LW; addr = 32'h110 + i; #1;
             if (misaligned !== 1) fail("misaligned lw", misaligned, 1);
@@ -115,7 +115,7 @@ module dmem_tb;
         if (misaligned !== 0) fail("lb never misaligned", misaligned, 0);
         mem_re = 0; mem_we = 0; #1;
         if (misaligned !== 0) fail("misaligned without access", misaligned, 0);
-        // 정렬 안 된 store는 메모리를 바꾸면 안 됨 (shadow는 그대로 두고 확인)
+        // a misaligned store must not change memory (shadow left unchanged, then checked)
         @(negedge clk); mem_we = 1; mem_size = SW; addr = 32'h102; wdata = 32'hDEAD_BEEF; #1;
         if (misaligned !== 1) fail("misaligned sw", misaligned, 1);
         @(posedge clk); #1; mem_we = 0;
@@ -123,12 +123,12 @@ module dmem_tb;
         @(posedge clk); #1; mem_we = 0;
         load(LW, 32'h100); load(LW, 32'h104); load(LW, 32'h108);
 
-        // 5) mem_we = 0이면 쓰지 않음
+        // 5) no write when mem_we = 0
         @(negedge clk); mem_we = 0; mem_size = SW; addr = 32'h0; wdata = 32'hFFFF_FFFF;
         @(posedge clk); #1;
         load(LW, 32'h0);
 
-        // 6) 무작위 store·load (정렬된 주소)
+        // 6) random stores/loads (aligned addresses)
         for (k = 0; k < 4000; k = k + 1) begin
             r_data = $random;
             case ($unsigned($random) % 3)
