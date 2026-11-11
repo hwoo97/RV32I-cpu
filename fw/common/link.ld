@@ -1,7 +1,8 @@
 /* Linker script for C firmware on the stage 4 MCU (03_chapters/ch14a_mcu/design.md sec. 6)
    Memory regions come from memmap.ld (generated from memmap.txt by tools/gen_memmap.py):
      IMEM : .text.init (crt0), .text, .rodata, and the load image of .data
-     DMEM : .data (copied by crt0), .bss (cleared by crt0), stack (grows down from the end of DMEM)
+     DMEM : .data (copied by crt0), .bss (cleared by crt0), stack (grows down from TOHOST,
+            the result words at the end of DMEM watched by the simulation testbench)
    Constants in .rodata stay in IMEM and are read through the data-side IMEM port (irom_*). */
 INCLUDE memmap.ld
 OUTPUT_ARCH( "riscv" )
@@ -47,7 +48,7 @@ SECTIONS
   } > DMEM
 
   _end = .;
-  _stack_top = ORIGIN(DMEM) + LENGTH(DMEM);
+  _stack_top = TOHOST_BASE;
 
   ASSERT(_end + STACK_MIN <= _stack_top, "DMEM full: .data + .bss leave less than STACK_MIN for the stack")
 

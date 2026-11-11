@@ -185,10 +185,10 @@ bash sim/run_xrun.sh uart_tb rtl/ch14a_mcu/apb_uart.v sim/ch14a_mcu/uart_tb.v
 | RXDATA를 읽어도 RX_VALID 유지 | STATUS |
 
 ## 7. MCU 전체 — `rv32i_mcu.v`, `mcu_top.v` (riscv-tests)
-구성: `mcu_top` = `rv32i_mcu`(코어 + 디코더 + APB 브리지 + GPIO·TIMER·UART, 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`) + `mcu_imem`(16 KB, 읽기 포트 2) + `mcu_dmem`(16 KB). 테스트벤치가 슬롯 15에 SIMCTL을 붙인다.
+구성: `mcu_top` = `rv32i_mcu`(코어 + 디코더 + APB 브리지 + GPIO·TIMER·UART, 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`) + `mcu_imem`(16 KB, 읽기 포트 2) + `mcu_dmem`(16 KB). 테스트벤치는 DMEM 쓰기 포트를 지켜보는 TOHOST 감시기([tohost_mon.v](../../sim/ch14a_mcu/tohost_mon.v))로 결과를 받는다 (2026-11-12 전에는 APB 슬롯 15의 SIMCTL — design.md 5.4절).
 
 MCU용 riscv-tests
-- 환경 [sim/riscv-tests-env/mcu/](../../sim/riscv-tests-env/mcu/riscv_test.h): 시작할 때 `.data`를 IMEM → DMEM으로 복사(데이터 쪽 IMEM 읽기 포트 사용), 결과는 SIMCTL `FINISH`(APB)에 써서 판정 → APB 경로와 코어 대기까지 함께 시험
+- 환경 [sim/riscv-tests-env/mcu/](../../sim/riscv-tests-env/mcu/riscv_test.h): 시작할 때 `.data`를 IMEM → DMEM으로 복사(데이터 쪽 IMEM 읽기 포트 사용), 결과는 DMEM 끝의 `TOHOST` `FINISH` 워드에 보통의 `sw`로 써서 판정
 - 링커 스크립트 [mcu/link.ld](../../sim/riscv-tests-env/mcu/link.ld): `INCLUDE memmap.ld` (주소 표에서 생성), 코드·상수·`.data` 초기값은 IMEM, `.data` 실행 주소는 DMEM
 - 빌드 (WSL, 테스트나 메모리 맵이 바뀔 때만): `bash sim/riscv-tests-env/build_rv32ui.sh ~/riscv-tests mcu` → `sim/riscv-tests-hex/rv32ui_mcu/` (커밋)
 
@@ -203,15 +203,16 @@ bash sim/ch14a_mcu/run_mcu_tests.sh
 ```
 - 학교 서버 — 대화형 (테스트 하나를 SimVision으로)
 ```bash
-bash sim/ch14a_mcu/run_mcu_tests.sh 0 --gui lw
+bash sim/ch14a_mcu/run_mcu_tests.sh --gui lw
 ```
-- 첫 인자 = SIMCTL 슬레이브의 대기 비율 % (기본 0)
 
 | 날짜 | 조건 | 결과 | 사이클 (40개 합) | 비고 |
 |------|------|------|----------------:|------|
 | 2026-11-12 | SIMCTL 대기 0 % | **40 / 40 PASS** | 13,854 | xsim. 3단계(13,067)보다 테스트당 약 20사이클 많음 = `.data` 복사 + 마지막 APB 쓰기 1사이클 |
 | 2026-11-12 | SIMCTL 대기 50 % | **40 / 40 PASS** | 13,895 | 마지막 `FINISH` 쓰기에서 대기 41사이클 |
 | 2026-11-12 | SIMCTL 대기 0 % · 50 % | **40 / 40 PASS** | | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
+| 2026-11-12 | **TOHOST** (슬롯 15 제거 후) | **40 / 40 PASS** | 13,854 | xsim. 결과 주소를 만드는 명령이 1개 늘고(`lui`+`addi`) APB 쓰기 1사이클이 줄어 합계는 같음 |
+| | TOHOST | 미검증 | | 학교 서버 Xcelium |
 
 오류 시험 (작은 어셈블리 프로그램, 기대대로 멈춤)
 | 프로그램 | 결과 |
@@ -222,12 +223,21 @@ bash sim/ch14a_mcu/run_mcu_tests.sh 0 --gui lw
 | IMEM 밖(0x2000_0000)으로 점프 | `bus_err` (fetch_err) |
 | GPIO 쓰고 읽기 → SIMCTL `PUTC`로 "OK" 출력 → `FINISH` 1 | PASS (22사이클) |
 
-회귀: 3단계 rv32ui 40/40, 코어 대기 30 % 40/40, bus_tb PASS (MCU 파일을 추가한 뒤 다시 확인)
+TOHOST 감시기 시험 (2026-11-12, 슬롯 15 제거 후)
+| 프로그램 | 결과 |
+|----------|------|
+| `FINISH`에 3 (`sw`) | FAIL test 1 (result = 3) |
+| `FINISH`에 `sb` | FAIL (partial store to TOHOST FINISH) |
+| 슬롯 15(0x4000_F000) 읽기 | `bus_err` (data_err) — 이제 빈 슬롯 |
+| `PUTC`에 `sb` 'O', `sw` 'K', `sh` '\n' → `FINISH` 1 | "OK" 출력, PASS (10사이클) |
+| `FINISH` 안 쓰고 다른 워드(+0x8)에만 씀 | timeout FAIL |
+
+회귀: 3단계 rv32ui 40/40, 코어 대기 30 % 40/40, bus_tb PASS (MCU 파일을 추가한 뒤 다시 확인). 슬롯 15 제거 후에도 코어 대기 30 % 40/40, bus_tb PASS
 
 ## 8. C 펌웨어 — `fw/hello` + UART 해독 테스트벤치
-구성: [fw_tb.v](../../sim/ch14a_mcu/fw_tb.v) = `mcu_top` + SIMCTL(슬롯 15) + **UART 해독기**. 해독기는 시작 비트마다 UART의 `BAUDDIV` 레지스터 값을 읽어 비트 길이를 정하고, 각 비트의 가운데에서 샘플링한다. 해독한 글자는 `UART| ...` 줄로 출력하고, 끝나면 기대 파일(`fw/hex/<프로그램>.exp`)과 한 글자씩 비교한다.
+구성: [fw_tb.v](../../sim/ch14a_mcu/fw_tb.v) = `mcu_top` + TOHOST 감시기 + **UART 해독기**. 해독기는 시작 비트마다 UART의 `BAUDDIV` 레지스터 값을 읽어 비트 길이를 정하고, 각 비트의 가운데에서 샘플링한다. 해독한 글자는 `UART| ...` 줄로 출력하고, 끝나면 기대 파일(`fw/hex/<프로그램>.exp`)과 한 글자씩 비교한다.
 
-PASS 조건: `main`이 0을 반환(`fw_exit` → SIMCTL `FINISH = 1`) **그리고** UART 출력 = 기대 파일 (CR 무시 → Windows CRLF 체크아웃도 동작). `trap`, `bus_err`, 정지 비트 오류, 시간 초과는 FAIL.
+PASS 조건: `main`이 0을 반환(`fw_exit` → TOHOST `FINISH = 1`) **그리고** UART 출력 = 기대 파일 (CR 무시 → Windows CRLF 체크아웃도 동작). `trap`, `bus_err`, 정지 비트 오류, 시간 초과는 FAIL.
 
 `fw/hello`가 확인하는 것
 | 항목 | 방법 |
@@ -255,7 +265,7 @@ bash sim/ch14a_mcu/run_fw_tests.sh
 ```
 - 학교 서버 — 대화형 (SimVision)
 ```bash
-bash sim/ch14a_mcu/run_fw_tests.sh 0 --gui hello
+bash sim/ch14a_mcu/run_fw_tests.sh --gui hello
 ```
 
 | 날짜 | 조건 | 결과 | 사이클 | 비고 |
@@ -264,6 +274,8 @@ bash sim/ch14a_mcu/run_fw_tests.sh 0 --gui hello
 | 2026-11-12 | 같은 hex, SIMCTL 대기 50 % | **PASS** | 24,365 | |
 | 2026-11-12 | BAUDDIV 3 / 40으로 다시 빌드 | **PASS** / **PASS** | 14,477 / 81,177 | 해독기가 비트 길이를 따라감 |
 | 2026-11-12 | BAUDDIV 9 | **PASS** | | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
+| 2026-11-12 | BAUDDIV 9, **TOHOST** | **PASS** | 24,364 | xsim, 191글자 (슬롯 15 제거 후 다시 빌드) |
+| | TOHOST | 미검증 | | 학교 서버 Xcelium |
 
 테스트벤치 자체 시험 (기대 파일을 바꿔서)
 | 바꾼 기대 파일 | 결과 |

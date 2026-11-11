@@ -36,9 +36,9 @@
 #define UART_TX_IDLE       (1u << 3)
 #define UART_RX_FRAME      (1u << 4)
 
-/* SIMCTL (0x4000_F000) - exists only in the simulation testbench */
-#define SIMCTL_FINISH      REG32(SIMCTL_BASE + 0x00) /* 1 = PASS, (n << 1) | 1 = FAIL n */
-#define SIMCTL_PUTC        REG32(SIMCTL_BASE + 0x04)
+/* TOHOST words at the end of DMEM (0x1000_3FF0): plain RAM; the simulation testbench watches stores to them */
+#define TOHOST_FINISH      REG32(TOHOST_BASE + 0x00) /* 1 = PASS, (n << 1) | 1 = FAIL n */
+#define TOHOST_PUTC        REG32(TOHOST_BASE + 0x04) /* low byte printed on the simulator console */
 
 /* Clock and baud rate. The board clock is 50 MHz (to be confirmed with the board data).
    Simulation builds (-DSIM) use a short bit time so that printf output is fast to simulate. */

@@ -7,7 +7,7 @@ C 펌웨어와 그 빌드 환경. 시뮬레이션·FPGA·이후 장(6~13장)에�
 | `common/memmap.txt` | **주소 표 (모든 주소의 원본)** — 고친 뒤 `python tools/gen_memmap.py` |
 | `common/memmap.h`, `common/memmap.ld` | 주소 표에서 만든 파일 (직접 고치지 않음) |
 | `common/crt0.S` | 시작 코드: `gp`·`sp`(DMEM 끝) 설정, `.data` 복사(IMEM → DMEM), `.bss` 0, `main` 호출 → `fw_exit` |
-| `common/link.ld` | 코드·`.rodata`·`.data` 초기값 → IMEM, `.data`·`.bss`·스택 → DMEM (`INCLUDE memmap.ld`, 스택 1 KB 이상 남는지 링크 때 검사) |
+| `common/link.ld` | 코드·`.rodata`·`.data` 초기값 → IMEM, `.data`·`.bss`·스택 → DMEM, 스택은 `TOHOST`(DMEM 끝 16바이트) 바로 아래부터 (`INCLUDE memmap.ld`, 스택 1 KB 이상 남는지 링크 때 검사) |
 | `common/mcu.h` | 주변장치 레지스터 (`GPIO_DATA_OUT`, `TIMER_COUNT`, `UART_STATUS` …) — 모두 워드 접근 |
 | `common/fwlib.h` | 라이브러리 함수 선언: `uart_*`, `printf`, `timer_now`·`delay_cycles`, `fw_exit`, `memset` 등 |
 | `common/uart.c`, `printf.c`, `timer.c`, `sys.c`, `libc_min.c` | 표준 라이브러리 없이(`-nostdlib`) 쓰는 최소 구현 |
@@ -24,7 +24,7 @@ make -C fw/hello clean
 | | 시뮬레이션 (`TARGET=sim`, 기본) | 보드 (`TARGET=fpga`) |
 |---|---|---|
 | UART 비트 길이 | `BAUDDIV` 9 (10클럭, 빠른 시뮬레이션). `SIM_BAUDDIV=n`으로 변경 | 433 (50 MHz에서 115200) |
-| `main`이 끝나면 | UART 송신을 마친 뒤 SIMCTL `FINISH`에 결과 (0 → PASS) | 무한 루프 |
+| `main`이 끝나면 | UART 송신을 마친 뒤 DMEM 끝 `TOHOST` `FINISH` 워드에 결과 (0 → PASS, 테스트벤치가 지켜봄) | 무한 루프 |
 - 옵션: `-march=rv32i -mabi=ilp32 -O2 -ffreestanding -fno-builtin`, 링크 `-nostdlib ... -lgcc` (곱셈·나눗셈은 libgcc 소프트웨어 함수)
 - `-fno-tree-loop-distribute-patterns`: gcc가 `memset` 안의 루프를 다시 `memset` 호출로 바꿔 무한 재귀가 되는 것을 막음
 - 주변장치 레지스터는 반드시 `uint32_t`로 읽고 쓴다 (APB 창에 바이트·하프워드 쓰기는 `bus_err`)

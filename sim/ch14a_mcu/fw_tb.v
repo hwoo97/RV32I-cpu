@@ -3,10 +3,9 @@
 //  - +HEX=<file>     program image (fw/hex/<prog>.hex)
 //  - +EXP=<file>     expected UART text (default: the HEX path with ".hex" replaced by ".exp")
 //  - +MAXCYC=<dec>   max cycles (default 2000000)
-//  - +SIMWAIT=<pct>  random wait states of the SIMCTL slave (default 0)
 //  - UART decoder on uart_tx: the bit time is read from the UART's BAUDDIV register at each start bit,
 //    each bit is sampled in its middle, a stop bit of 0 is a FAIL. Decoded text is printed as "UART| ..."
-//  - PASS = firmware wrote FINISH = 1 (main returned 0) and the UART text equals the expected file
+//  - PASS = firmware stored FINISH = 1 to TOHOST at the end of DMEM (main returned 0) and the UART text equals the expected file
 //    (CR characters are ignored on both sides, so CRLF checkouts work)
 //  - trap, bus_err, a UART frame error or timeout -> FAIL
 //  - gpio_in = {gpio_out[7:0], 8'hC3} (loop-back used by fw/hello)
@@ -17,27 +16,21 @@ module fw_tb;
     wire [15:0] gpio_out, gpio_oe;
     wire        uart_tx, timer_irq, trap, bus_err;
     wire [31:0] dbg_pc;
-    wire        apbx_psel, apbx_penable, apbx_pwrite, apbx_pready, apbx_pslverr;
-    wire [11:0] apbx_paddr;
-    wire [31:0] apbx_pwdata, apbx_prdata;
-    wire        sim_done;
+    wire        sim_done, sim_bad_store;
     wire [31:0] sim_result;
 
     mcu_top dut (
         .clk(clk), .rst_n(rst_n),
         .gpio_in({gpio_out[7:0], 8'hC3}), .gpio_out(gpio_out), .gpio_oe(gpio_oe),
         .uart_rx(1'b1), .uart_tx(uart_tx), .timer_irq(timer_irq),
-        .apbx_psel(apbx_psel), .apbx_penable(apbx_penable), .apbx_pwrite(apbx_pwrite),
-        .apbx_paddr(apbx_paddr), .apbx_pwdata(apbx_pwdata), .apbx_prdata(apbx_prdata),
-        .apbx_pready(apbx_pready), .apbx_pslverr(apbx_pslverr),
         .dbg_pc(dbg_pc), .trap(trap), .bus_err(bus_err)
     );
 
-    apb_simctl u_simctl (
-        .pclk(clk), .presetn(rst_n),
-        .psel(apbx_psel), .penable(apbx_penable), .pwrite(apbx_pwrite), .paddr(apbx_paddr), .pwdata(apbx_pwdata),
-        .prdata(apbx_prdata), .pready(apbx_pready), .pslverr(apbx_pslverr),
-        .done(sim_done), .result(sim_result)
+    // test result: the program stores to the TOHOST words at the end of DMEM (watched on the DMEM write port)
+    tohost_mon u_tohost (
+        .clk(clk), .rst_n(rst_n),
+        .addr(dut.ram_addr), .wstrb(dut.ram_wstrb), .wdata(dut.ram_wdata),
+        .done(sim_done), .result(sim_result), .bad_store(sim_bad_store)
     );
 
     // ---------------- program load ----------------
@@ -135,6 +128,10 @@ module fw_tb;
                 $display("FAIL: %0s main returned %0d (result=%h)", hex, sim_result >> 1, sim_result);
             else
                 $display("PASS: %0s (%0d cycles, %0d UART chars)", hex, cycles, ngot);
+            $finish;
+        end
+        if (sim_bad_store) begin
+            $display("FAIL: %0s partial store to TOHOST FINISH at pc=%h", hex, dbg_pc);
             $finish;
         end
         if (trap) begin

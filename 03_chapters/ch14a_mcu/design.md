@@ -33,17 +33,17 @@ mcu_top  (simulation / FPGA top)
 - 데이터 포트(`dmem_*`)는 주소 디코더가 **IMEM 읽기(`irom_*`, IMEM 읽기 포트 2) / DMEM(`ram_*`) / APB** 중 하나로 보낸다
 - IMEM·DMEM 접근은 대기 없이 한 사이클, **APB 접근만 코어를 멈춘다(stall)**
 - `rv32i_mcu`의 메모리 포트 3개: `imem_*`(가져오기), `irom_*`(데이터 쪽 IMEM 읽기, 읽기 전용), `ram_*`(DMEM 읽기·쓰기)
-- **구현 (2026-11-12)**: [rv32i_mcu.v](../../rtl/ch14a_mcu/rv32i_mcu.v) (슬롯 0 GPIO, 1 TIMER, 2 UART, 15 외부 `apbx_*`, 나머지 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`, 출력 `trap`·`bus_err`·`timer_irq`), [mcu_top.v](../../rtl/ch14a_mcu/mcu_top.v) (+ `mcu_imem` 2포트, `mcu_dmem`). 3단계 메모리 모델과 이름이 겹치지 않게 `mcu_` 앞머리 → [test.md](test.md) 7절
+- **구현 (2026-11-12)**: [rv32i_mcu.v](../../rtl/ch14a_mcu/rv32i_mcu.v) (슬롯 0 GPIO, 1 TIMER, 2 UART, 나머지 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`, 출력 `trap`·`bus_err`·`timer_irq`), [mcu_top.v](../../rtl/ch14a_mcu/mcu_top.v) (+ `mcu_imem` 2포트, `mcu_dmem`). 3단계 메모리 모델과 이름이 겹치지 않게 `mcu_` 앞머리 → [test.md](test.md) 7절
 
 ## 2. 메모리 맵
 | 주소 | 크기 | 대상 | 접근 | 비고 |
 |------|-----:|------|------|------|
 | `0x0000_0000` – `0x0000_3FFF` | 16 KB | IMEM | 가져오기 / 데이터 포트는 **읽기 전용** | 리셋 PC = `0x0000_0000`. 코드·상수(`.rodata`)·`.data` 초기값 |
-| `0x1000_0000` – `0x1000_3FFF` | 16 KB | DMEM | 읽기·쓰기 (byte·half·word) | `.data`·`.bss`·힙·스택 (스택은 끝 주소부터 아래로) |
+| `0x1000_0000` – `0x1000_3FFF` | 16 KB | DMEM | 읽기·쓰기 (byte·half·word) | `.data`·`.bss`·힙·스택 (스택은 `TOHOST` 바로 아래부터 아래로) |
+| `0x1000_3FF0` – `0x1000_3FFF` | 16 B | (DMEM 안) `TOHOST` | 보통 store | 테스트 결과 워드 (5.4절). 하드웨어는 일반 DMEM, 테스트벤치가 쓰기를 지켜봄 |
 | `0x4000_0000` – `0x4000_0FFF` | 4 KB | GPIO | APB, **word 접근만** | |
 | `0x4000_1000` – `0x4000_1FFF` | 4 KB | TIMER | APB, word | |
 | `0x4000_2000` – `0x4000_2FFF` | 4 KB | UART | APB, word | |
-| `0x4000_F000` – `0x4000_FFFF` | 4 KB | SIMCTL | APB, word | **시뮬레이션 전용** 종료 레지스터 (7절). FPGA·ASIC에서는 빈 자리 |
 | 그 밖 | | (없음) | | 데이터: 읽으면 0, 쓰기는 무시 + `bus_err` / 가져오기: IMEM 밖이면 `bus_err` (2.2절) |
 
 - 주소 디코드는 위쪽 비트만 본다: `addr[31:28]` = 0(IMEM) / 1(DMEM) / 4(APB), APB 안에서는 `addr[15:12]`로 주변장치 선택
@@ -150,12 +150,15 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
   - 오류(`PSLVERR`): 없는 오프셋, RXDATA·STATUS 쓰기, TXDATA 읽기. `BAUDDIV` 최솟값 3, 리셋 값 433 (50 MHz, 115200)
   - → [test.md](test.md) 6절
 
-### 5.4 SIMCTL (`0x4000_F000`, 시뮬레이션 전용)
-| 오프셋 | 이름 | 접근 | 내용 |
+### 5.4 TOHOST — 시뮬레이션 결과 보고 (DMEM 끝 `0x1000_3FF0`)
+| 오프셋 | 이름 | 쓰기 | 내용 |
 |-------:|------|:----:|------|
-| `0x00` | `FINISH` | W | 1 = PASS로 종료, `(n << 1) \| 1` = 테스트 n 실패로 종료 (riscv-tests `tohost`와 같은 규칙) |
-| `0x04` | `PUTC` | W | 아래 8비트를 시뮬레이터 화면에 바로 출력 (UART보다 빠른 디버그용) |
-- MCU RTL에는 넣지 않고 **테스트벤치가 APB 슬레이브로 붙인다** → FPGA·ASIC에는 없음
+| `0x00` | `FINISH` | `sw` | 1 = PASS로 종료, `(n << 1) \| 1` = 테스트 n 실패로 종료 (riscv-tests `tohost`와 같은 규칙). `sw`가 아니면 FAIL |
+| `0x04` | `PUTC` | `sb`/`sh`/`sw` | 아래 8비트를 시뮬레이터 화면에 바로 출력 (UART보다 빠른 디버그용) |
+- **하드웨어에서는 보통의 DMEM 워드**다. 테스트벤치의 감시기([tohost_mon.v](../../sim/ch14a_mcu/tohost_mon.v))가 `mcu_top`의 DMEM 쓰기 포트(`ram_*`)를 지켜보다가 이 주소에 쓰기가 오면 판정·출력한다
+- 링커 스크립트가 데이터·스택을 이 16바이트 밖에 둔다 (주소 표의 `area` 영역 → `memmap.ld`의 `TOHOST_BASE`)
+- **변경 (2026-11-12)**: 처음에는 APB 슬롯 15에 시뮬레이션 전용 슬레이브 SIMCTL을 테스트벤치가 붙이고, MCU에 외부 APB 포트(`apbx_*`)를 두었다. 합성에서 이 시뮬레이션 전용 경로가 칩 타이밍에 섞여(8.5 ns에서 유일한 위반 −3 ps) 테스트용 장치를 RTL에서 빼는 방식으로 바꿨다 → 시뮬레이션·합성·FPGA가 **같은 RTL**. 포트 `apbx_*`와 슬롯 15는 없어졌고 슬롯 15는 다른 빈 슬롯과 같다
+  - 잃은 것: SIMCTL의 무작위 대기(`SIMWAIT`)로 MCU 전체에서 APB 대기를 시험하던 것 → 코어 대기는 `core_wait_tb`(무작위 대기 0·30·70 %), APB 대기·오류는 `bus_tb`에서 확인
 
 ## 6. 펌웨어 환경 (WSL `rv32i`)
 | 파일 | 내용 |
@@ -170,7 +173,7 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
 - **구현 (2026-11-12)**: [fw/README.md](../../fw/README.md)
   - 계획과 달라진 점: 결과는 `imem.hex` 하나 (`.data` 초기값은 IMEM 이미지 안, crt0가 복사 → `dmem.hex` 불필요). MCU용 riscv-tests 환경은 `sim/riscv-tests-env/mcu/`에 둠
   - 추가: `fwlib.h`(함수 선언), `timer.c`(`timer_now`·`delay_cycles`), `sys.c`(`fw_exit`), `libc_min.c`(gcc가 부를 수 있는 `memset`·`memcpy` 등), `common.mk`(공통 빌드 규칙)
-  - 빌드 대상 두 가지: 시뮬레이션(`-DSIM`, UART 비트 10클럭, 끝나면 SIMCTL에 결과) / 보드(`TARGET=fpga`, 115200, 무한 루프)
+  - 빌드 대상 두 가지: 시뮬레이션(`-DSIM`, UART 비트 10클럭, 끝나면 TOHOST에 결과) / 보드(`TARGET=fpga`, 115200, 무한 루프)
   - 검증: UART 해독 테스트벤치 `sim/ch14a_mcu/fw_tb.v` → [test.md](test.md) 8절
 
 ## 7. 검증 계획
@@ -181,7 +184,7 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
 | 3 | GPIO | APB 모형 마스터 | 레지스터 읽기·쓰기, DIR, 입력 동기화 |
 | 4 | TIMER | APB 모형 마스터 | 카운트, 비교 일치, AUTO, W1C |
 | 5 | UART | 송신 → 수신 루프백 | 여러 BAUDDIV에서 송·수신 일치, BUSY·VALID·OVERRUN |
-| 6 | MCU 전체 (riscv-tests) | `mcu_top` + SIMCTL | rv32ui 40/40 (새 메모리 맵에 맞춘 링커 스크립트로 다시 빌드) |
+| 6 | MCU 전체 (riscv-tests) | `mcu_top` + TOHOST 감시기 | rv32ui 40/40 (새 메모리 맵에 맞춘 링커 스크립트로 다시 빌드) |
 | 7 | MCU 전체 (C 펌웨어) | `mcu_top` + UART 디코더 | `printf("Hello")`가 UART 파형에서 문자열로 디코딩됨, GPIO 출력 변화 |
 - 모든 테스트벤치는 자가 검사(PASS/FAIL·타임아웃), xsim(PC)·Xcelium(서버) 둘 다, 일괄·대화형(`--gui`) 실행
 - 합성: `rv32i_mcu`(코어 + 디코더 + 브리지 + 주변장치, 메모리 없음)를 Genus로, 목표 8 ns 유지. 메모리 포트 3개에 입출력 지연을 준다
@@ -190,7 +193,7 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
 | 위치 | 파일 |
 |------|------|
 | `rtl/ch14a_mcu/` | 합성 대상: `rv32i_core.v`(stall 추가 복사본)와 코어 하위 모듈, `bus_mux.v`(주소 디코더), `apb_bridge.v`, `apb_gpio.v`, `apb_timer.v`, `apb_uart.v`, `rv32i_mcu.v`(메모리 없는 MCU), `mcu_memmap.vh`(생성 파일, 2.3절) / 합성 제외: `imem.v`(읽기 포트 2), `dmem.v`, `mcu_top.v`(MCU + 메모리, 시뮬레이션·FPGA 최상위) |
-| `sim/ch14a_mcu/` | 모듈별 테스트벤치, `apb_simctl.v`(테스트벤치 전용), `rv32i_mcu_tb.v`, `.f` 파일, probe Tcl |
+| `sim/ch14a_mcu/` | 모듈별 테스트벤치, `tohost_mon.v`(테스트벤치 전용, DMEM 쓰기 감시), `rv32i_mcu_tb.v`, `.f` 파일, probe Tcl |
 | `syn/ch14a_mcu/` | Genus 스크립트(ch05 구조 그대로), `clean.tcl` |
 | `fw/` | 펌웨어 (6절) |
 | `tools/` | `gen_memmap.py` — 주소 표 하나에서 `mcu_memmap.vh`·`memmap.h`·`memmap.ld` 생성 (2.3절) |

@@ -4,11 +4,11 @@
 #     SRCS := main.c
 #     include ../common/common.mk
 #
-#   make                 simulation build (-DSIM, short UART bit time, SIMCTL report at exit)
+#   make                 simulation build (-DSIM, short UART bit time, TOHOST report at exit)
 #                        -> ../hex/<PROG>.hex and ../hex/<PROG>.exp (committed: the school server has no RISC-V gcc)
 #   make SIM_BAUDDIV=n   simulation build with another UART bit time (n + 1 clocks, default 9);
 #                        use with BUILD=<dir> HEX_OUT=<file> so that the committed hex is not replaced
-#   make TARGET=fpga     board build (UART 115200 @ 50 MHz, no SIMCTL) -> build/fpga/<PROG>.hex (not committed)
+#   make TARGET=fpga     board build (UART 115200 @ 50 MHz, no TOHOST report) -> build/fpga/<PROG>.hex (not committed)
 #   make clean
 #
 # Output of every build: build/<TARGET>/<PROG>.elf, .dump (disassembly), .map, .hex

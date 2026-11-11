@@ -28,7 +28,7 @@ if {![info exists T_WB]} {
     set T_WB [expr {[info exists ::env(T_WB)] ? $::env(T_WB) : 1.2}]
 }
 set T_WSU  0.3
-# Pins that leave the chip (GPIO, UART, external APB slot): fraction of the cycle given to the outside
+# Pins that leave the chip (GPIO, UART): fraction of the cycle given to the outside
 set T_IO_FRAC 0.5
 
 create_clock -name clk -period $CLK_PERIOD [get_ports clk]
@@ -45,15 +45,6 @@ set_input_delay  [expr {$CLK_PERIOD - $T_WB}]    -clock clk [get_ports {ram_rdat
 
 # DMEM write: ready T_WSU before the next edge
 set_output_delay $T_WSU                          -clock clk [get_ports {ram_wstrb[*] ram_wdata[*]}]
-
-# External APB slot 15 (simulation control now, an off-MCU slave later):
-# PSEL / PADDR / PWDATA come combinationally from the core address (the bridge does not register them),
-# so the slave is budgeted like a memory: T_MEM to answer, T_WB left for PRDATA / PREADY / PSLVERR
-# to reach the register file and the stall logic
-set_output_delay [expr {$T_MEM + $T_WB}]         -clock clk \
-    [get_ports {apbx_psel apbx_penable apbx_pwrite apbx_paddr[*] apbx_pwdata[*]}]
-set_input_delay  [expr {$CLK_PERIOD - $T_WB}]    -clock clk \
-    [get_ports {apbx_prdata[*] apbx_pready apbx_pslverr}]
 
 # Chip pins driven by flops (GPIO outputs, UART TX): half a cycle for the pad and board
 set_output_delay [expr {$CLK_PERIOD * $T_IO_FRAC}] -clock clk [get_ports {gpio_out[*] gpio_oe[*] uart_tx}]

@@ -5,3 +5,6 @@ MEMORY
   IMEM (rx) : ORIGIN = 0x00000000, LENGTH = 0x00004000
   DMEM (rw) : ORIGIN = 0x10000000, LENGTH = 0x00004000
 }
+/* areas reserved inside the memories (the linker scripts keep data and stack out of them) */
+TOHOST_BASE = 0x10003FF0;
+TOHOST_SIZE = 0x00000010;

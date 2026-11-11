@@ -6,8 +6,8 @@
 //  - The program image (IMEM_INIT, or loaded by the testbench into u_imem.mem) holds code, constants
 //    and the initial values of .data; the startup code copies .data into DMEM
 //  - GPIO pins stay split into in / out / oe here; the board top adds the tri-state buffers
-//  - The external APB slot (apbx_*) is passed through for the simulation-only SIMCTL slave;
-//    on the board tie apbx_pready = 1, apbx_pslverr = 1, apbx_prdata = 0
+//  - Simulation tests end by writing the TOHOST words at the end of DMEM (normal stores); the testbench
+//    watches u_dmem's write port, so the same RTL is simulated, synthesized and put on the FPGA
 module mcu_top #(
     parameter IMEM_INIT = "",
     parameter DMEM_INIT = "",
@@ -22,14 +22,6 @@ module mcu_top #(
     input               uart_rx,
     output              uart_tx,
     output              timer_irq,
-    output              apbx_psel,
-    output              apbx_penable,
-    output              apbx_pwrite,
-    output [11:0]       apbx_paddr,
-    output [31:0]       apbx_pwdata,
-    input  [31:0]       apbx_prdata,
-    input               apbx_pready,
-    input               apbx_pslverr,
     output [31:0]       dbg_pc,
     output              trap,
     output              bus_err
@@ -55,14 +47,6 @@ module mcu_top #(
         .uart_rx      (uart_rx),
         .uart_tx      (uart_tx),
         .timer_irq    (timer_irq),
-        .apbx_psel    (apbx_psel),
-        .apbx_penable (apbx_penable),
-        .apbx_pwrite  (apbx_pwrite),
-        .apbx_paddr   (apbx_paddr),
-        .apbx_pwdata  (apbx_pwdata),
-        .apbx_prdata  (apbx_prdata),
-        .apbx_pready  (apbx_pready),
-        .apbx_pslverr (apbx_pslverr),
         .dbg_pc       (dbg_pc),
         .trap         (trap),
         .bus_err      (bus_err)

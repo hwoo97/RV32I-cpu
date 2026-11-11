@@ -8,6 +8,8 @@
 #define IMEM_SIZE   0x00004000
 #define DMEM_BASE   0x10000000
 #define DMEM_SIZE   0x00004000
+#define TOHOST_BASE 0x10003FF0  /* simulation only */
+#define TOHOST_SIZE 0x00000010
 #define APB_BASE    0x40000000
 #define APB_SIZE    0x00010000
 #define GPIO_BASE   0x40000000
@@ -16,7 +18,5 @@
 #define TIMER_SIZE  0x00001000
 #define UART_BASE   0x40002000
 #define UART_SIZE   0x00001000
-#define SIMCTL_BASE 0x4000F000  /* simulation only */
-#define SIMCTL_SIZE 0x00001000
 
 #endif

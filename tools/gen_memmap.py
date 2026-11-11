@@ -6,11 +6,11 @@
 Generated files (committed, so the school server needs no Python):
     rtl/ch14a_mcu/mcu_memmap.vh   Verilog `define: base, size, mask, address width, hit test, APB slot
     fw/common/memmap.h            C #define: base and size
-    fw/common/memmap.ld           linker MEMORY block for the 'mem' regions
+    fw/common/memmap.ld           linker MEMORY block for the 'mem' regions, symbols for 'area' regions
 
 Table checks: unique names, size is a power of two, base is a multiple of size, top-level regions
 (mem, bus) do not overlap, every APB slave is inside the APB window, all APB slaves have the same size,
-APB slots are unique. See 03_chapters/ch14a_mcu/design.md sec. 2.3.
+APB slots are unique, every 'area' is inside one 'mem' region and areas do not overlap. See 03_chapters/ch14a_mcu/design.md sec. 2.3.
 """
 import os
 import re
@@ -53,8 +53,8 @@ def read_table(path):
         opts = cols[4:]
         if not re.fullmatch(r"[A-Z][A-Z0-9_]*", name):
             fail(f"{where}: name '{name}' must be upper case (A-Z, 0-9, _)")
-        if kind not in ("mem", "bus", "apb"):
-            fail(f"{where}: kind '{kind}' must be mem, bus or apb")
+        if kind not in ("mem", "bus", "apb", "area"):
+            fail(f"{where}: kind '{kind}' must be mem, bus, apb or area")
         r = {"name": name, "base": int(base, 16), "size": parse_size(size, where), "kind": kind,
              "attr": "rwx", "sim": False, "where": where}
         for o in opts:
@@ -80,6 +80,15 @@ def check(regions):
     top = [r for r in regions if r["kind"] in ("mem", "bus")]
     for i, a in enumerate(top):
         for b in top[i + 1:]:
+            if a["base"] < b["base"] + b["size"] and b["base"] < a["base"] + a["size"]:
+                fail(f"{a['name']} and {b['name']} overlap")
+    mems = [r for r in regions if r["kind"] == "mem"]
+    areas = [r for r in regions if r["kind"] == "area"]
+    for a in areas:
+        if not any(m["base"] <= a["base"] and a["base"] + a["size"] <= m["base"] + m["size"] for m in mems):
+            fail(f"{a['name']} (area) is not inside a mem region")
+    for i, a in enumerate(areas):
+        for b in areas[i + 1:]:
             if a["base"] < b["base"] + b["size"] and b["base"] < a["base"] + a["size"]:
                 fail(f"{a['name']} and {b['name']} overlap")
     buses = [r for r in regions if r["kind"] == "bus"]
@@ -161,6 +170,11 @@ def gen_ld(regions):
     for r in mems:
         out.append(f"  {r['name']:<{width}} ({r['attr']}) : ORIGIN = 0x{r['base']:08X}, LENGTH = 0x{r['size']:08X}")
     out.append("}")
+    areas = [r for r in regions if r["kind"] == "area"]
+    if areas:
+        out.append("/* areas reserved inside the memories (the linker scripts keep data and stack out of them) */")
+        for r in areas:
+            out += [f"{r['name']}_BASE = 0x{r['base']:08X};", f"{r['name']}_SIZE = 0x{r['size']:08X};"]
     return "\n".join(out) + "\n"
 
 

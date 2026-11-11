@@ -19,6 +19,12 @@
 `define MM_DMEM_AW      14
 `define MM_DMEM_HIT(a)  (((a) & 32'hFFFF_C000) == 32'h1000_0000)
 
+// TOHOST (area, simulation only)
+`define MM_TOHOST_BASE    32'h1000_3FF0
+`define MM_TOHOST_SIZE    32'h0000_0010
+`define MM_TOHOST_AW      4
+`define MM_TOHOST_HIT(a)  (((a) & 32'hFFFF_FFF0) == 32'h1000_3FF0)
+
 // APB (bus)
 `define MM_APB_BASE    32'h4000_0000
 `define MM_APB_SIZE    32'h0001_0000
@@ -45,13 +51,6 @@
 `define MM_UART_AW      12
 `define MM_UART_HIT(a)  (((a) & 32'hFFFF_F000) == 32'h4000_2000)
 `define MM_UART_SLOT    4'd2
-
-// SIMCTL (apb, simulation only)
-`define MM_SIMCTL_BASE    32'h4000_F000
-`define MM_SIMCTL_SIZE    32'h0000_1000
-`define MM_SIMCTL_AW      12
-`define MM_SIMCTL_HIT(a)  (((a) & 32'hFFFF_F000) == 32'h4000_F000)
-`define MM_SIMCTL_SLOT    4'd15
 
 // APB slot field of the address
 `define MM_APB_SLOT_MSB 15

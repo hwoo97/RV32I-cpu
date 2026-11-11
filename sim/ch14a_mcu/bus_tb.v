@@ -230,7 +230,7 @@ module bus_tb;
         check(0, 32'h4000_0004, 0, 0);
         check(1, 32'h4000_2008, 4'b1111, 32'h1234_5678);// UART slot 2
         check(0, 32'h4000_2008, 0, 0);
-        check(0, 32'h4000_F000, 0, 0);                  // SIMCTL slot 15
+        check(0, 32'h4000_F000, 0, 0);                  // slot 15 (inside the APB window)
         check(1, 32'h4000_1000, 4'b0001, 32'h0000_0055);// sb to APB -> error, no transfer
         check(0, 32'h4000_1FFC, 0, 0);                  // PSLVERR offset
         check(0, 32'h4000_5000, 0, 0);                  // empty slot 5 -> error

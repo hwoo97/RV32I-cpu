@@ -11,14 +11,17 @@
 #   kind : mem  = memory region (goes to the linker MEMORY block), attr = linker attributes (rx, rw, ...)
 #          bus  = bus window that contains slaves (APB)
 #          apb  = APB slave; must lie inside the APB bus window; slot = base[15:12]
-#   options: sim  = simulation only (testbench slave, not in the MCU RTL)
+#          area = reserved part of a mem region (the linker scripts keep code, data and stack out of it)
+#   options: sim  = used only in simulation (testbench side, nothing in the MCU RTL)
 
 IMEM    0x00000000  16K  mem  attr=rx
 DMEM    0x10000000  16K  mem  attr=rw
+# Test result words at the end of DMEM (riscv-tests 'tohost' idea): the program writes them with
+# normal stores, the testbench watches the DMEM write port. 0x0 FINISH, 0x4 PUTC
+TOHOST  0x10003FF0  16   area sim
 
 APB     0x40000000  64K  bus
 
 GPIO    0x40000000  4K   apb
 TIMER   0x40001000  4K   apb
 UART    0x40002000  4K   apb
-SIMCTL  0x4000F000  4K   apb  sim

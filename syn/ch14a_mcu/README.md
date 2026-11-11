@@ -23,7 +23,7 @@
 | `imem_addr` / `imem_rdata` | 출력 `주기 − T_ADDR` / 입력 `T_ADDR + T_MEM` | 명령어 읽기 (3단계와 같음) |
 | `ram_addr`, `irom_addr` / `ram_rdata`, `irom_rdata` | 출력 `T_MEM + T_WB` / 입력 `주기 − T_WB` | 데이터 읽기. DMEM과 IMEM 데이터 포트에 같은 예산 (주소 디코더를 지나는 시간은 코어 몫) |
 | `ram_wstrb`, `ram_wdata` | 출력 `T_WSU` | 다음 에지에 쓰기 |
-| `apbx_*` (외부 APB 슬롯) | 메모리와 같은 예산 | 브리지가 `PSEL`·`PADDR`를 레지스터에 담지 않고 코어 주소에서 바로 내보냄 → 반 사이클을 주면 맞출 수 없음 |
+| ~~`apbx_*` (외부 APB 슬롯)~~ | (2026-11-12 삭제) 메모리와 같은 예산이었음 | 브리지가 `PSEL`·`PADDR`를 레지스터에 담지 않고 코어 주소에서 바로 내보냄 → 반 사이클을 주면 맞출 수 없음 |
 | `gpio_out`, `gpio_oe`, `uart_tx` | 출력 주기 × 0.5 | 플립플롭 출력 → 패드·보드에 반 사이클 |
 | `gpio_in`, `uart_rx` | `set_false_path` | 비동기 입력, 내부에서 2단 플립플롭으로 동기화 |
 | `dbg_pc`, `trap`, `bus_err`, `timer_irq` | 출력 0 | 관찰·오류 신호 |
@@ -78,6 +78,7 @@ bash syn/ch14a_mcu/run_syn.sh -i
 | 2026-11-12 | 8.5 ns | 6.8 ns | 27,291.6 | 36,769.1 | 7,132 | **−0.161** | 1,598줄 | `T_WB` 1.0. 일괄. 주기를 늘려도 거의 그대로 → 주기와 무관한 경로가 원인 |
 | 2026-11-12 | 8 ns | 6.4 ns | 36,464.4 | 48,087.5 | 9,206 | **−0.043** | 624줄 | **`T_WB` 1.2** 일괄. 불만족. 경로 종류별: imem→reg −1, mem→reg −2, apbx→reg −34, imem→addr −43, reg→reg +441, reg→imem_addr +16, mem_write +595 ps. 위반하는 동안 Genus가 셀을 키워 면적 급증(regfile 20,213.9, alu 8,027.1) |
 | 2026-11-12 | 8.5 ns | 6.8 ns | 28,528.6 | 38,308.4 | 7,508 | **−0.003** | 217줄 | **`T_WB` 1.2** 일괄. 위반은 시뮬레이션 전용 외부 APB 슬롯(apbx→reg −3)뿐, 칩 경로는 모두 만족: imem→reg 0, mem→reg +2, imem→addr 0, reg→reg +857, reg→imem_addr +24, mem_write +731 ps |
+| | 8.5 ns | 6.8 ns | (미실행) | | | | | `T_WB` 1.2, **슬롯 15·`apbx_*` 제거 후** (TOHOST 방식) |
 
 3단계 코어와 비교 (같은 목표 8 ns, 합성 6.4 ns, 셀 면적 µm², `T_WB` 1.0 — 1.2로 다시 합성 후 갱신)
 

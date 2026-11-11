@@ -2,8 +2,8 @@
 // Testbench for mcu_top (rv32i_mcu + memories) - riscv-tests built for the MCU memory map
 //  - +HEX=<file>    program image for IMEM (sim/riscv-tests-hex/rv32ui_mcu/<test>.hex): code + .data image
 //  - +MAXCYC=<dec>  max cycles (default 200000)
-//  - +SIMWAIT=<pct> random wait states of the SIMCTL slave (default 0)
-//  - The test ends by writing the SIMCTL FINISH register (APB slot 15): 1 = PASS, (n << 1) | 1 = FAIL
+//  - The test ends by storing to the TOHOST FINISH word at the end of DMEM (tohost_mon watches the DMEM
+//    write port): 1 = PASS, (n << 1) | 1 = FAIL
 //  - trap, bus_err or timeout -> FAIL
 //  - UART: uart_rx is looped back from uart_tx; GPIO inputs are 0
 module mcu_tb;
@@ -13,27 +13,21 @@ module mcu_tb;
     wire [15:0] gpio_out, gpio_oe;
     wire        uart_tx, timer_irq, trap, bus_err;
     wire [31:0] dbg_pc;
-    wire        apbx_psel, apbx_penable, apbx_pwrite, apbx_pready, apbx_pslverr;
-    wire [11:0] apbx_paddr;
-    wire [31:0] apbx_pwdata, apbx_prdata;
-    wire        sim_done;
+    wire        sim_done, sim_bad_store;
     wire [31:0] sim_result;
 
     mcu_top dut (
         .clk(clk), .rst_n(rst_n),
         .gpio_in(16'h0000), .gpio_out(gpio_out), .gpio_oe(gpio_oe),
         .uart_rx(uart_tx), .uart_tx(uart_tx), .timer_irq(timer_irq),
-        .apbx_psel(apbx_psel), .apbx_penable(apbx_penable), .apbx_pwrite(apbx_pwrite),
-        .apbx_paddr(apbx_paddr), .apbx_pwdata(apbx_pwdata), .apbx_prdata(apbx_prdata),
-        .apbx_pready(apbx_pready), .apbx_pslverr(apbx_pslverr),
         .dbg_pc(dbg_pc), .trap(trap), .bus_err(bus_err)
     );
 
-    apb_simctl u_simctl (
-        .pclk(clk), .presetn(rst_n),
-        .psel(apbx_psel), .penable(apbx_penable), .pwrite(apbx_pwrite), .paddr(apbx_paddr), .pwdata(apbx_pwdata),
-        .prdata(apbx_prdata), .pready(apbx_pready), .pslverr(apbx_pslverr),
-        .done(sim_done), .result(sim_result)
+    // test result: the program stores to the TOHOST words at the end of DMEM (watched on the DMEM write port)
+    tohost_mon u_tohost (
+        .clk(clk), .rst_n(rst_n),
+        .addr(dut.ram_addr), .wstrb(dut.ram_wstrb), .wdata(dut.ram_wdata),
+        .done(sim_done), .result(sim_result), .bad_store(sim_bad_store)
     );
 
     reg [8*256:1] hex;
@@ -60,6 +54,10 @@ module mcu_tb;
                 $display("PASS: %0s (%0d cycles)", hex, cycles);
             else
                 $display("FAIL: %0s test %0d (result=%h, pc=%h)", hex, sim_result >> 1, sim_result, dbg_pc);
+            $finish;
+        end
+        if (sim_bad_store) begin
+            $display("FAIL: %0s partial store to TOHOST FINISH at pc=%h", hex, dbg_pc);
             $finish;
         end
         if (trap) begin

@@ -7,9 +7,10 @@
 //      imem_*  instruction fetch            -> IMEM read port A
 //      irom_*  data-side IMEM read (r/o)    -> IMEM read port B
 //      ram_*   data memory read / write     -> DMEM
-//  - APB slots (addr[15:12]): 0 GPIO, 1 TIMER, 2 UART, 15 external (apbx_*, used by the testbench SIMCTL),
-//    every other slot has no slave: PREADY = 1, PSLVERR = 1, PRDATA = 0 (so an access ends with bus_err
-//    instead of waiting forever)
+//  - APB slots (addr[15:12]): 0 GPIO, 1 TIMER, 2 UART; every other slot has no slave:
+//    PREADY = 1, PSLVERR = 1, PRDATA = 0 (so an access ends with bus_err instead of waiting forever)
+//  - Nothing here is for simulation only: tests report their result by normal stores to the TOHOST
+//    words at the end of DMEM, which the testbench watches on the ram_* port (design.md sec. 5.4)
 //  - Errors: trap (illegal instruction, misaligned access) and bus_err (fetch outside IMEM, unmapped
 //    data address, write to IMEM, sb/sh to a peripheral, PSLVERR). Both go to traps in ch6.
 module rv32i_mcu #(
@@ -39,15 +40,6 @@ module rv32i_mcu #(
     output              uart_tx,
     // timer interrupt request (used in ch6)
     output              timer_irq,
-    // external APB slave in slot 15 (simulation control); tie apbx_pready = 1, apbx_pslverr = 1 if unused
-    output              apbx_psel,
-    output              apbx_penable,
-    output              apbx_pwrite,
-    output [11:0]       apbx_paddr,
-    output [31:0]       apbx_pwdata,
-    input  [31:0]       apbx_prdata,
-    input               apbx_pready,
-    input               apbx_pslverr,
     // observation / errors
     output [31:0]       dbg_pc,
     output              trap,                   // illegal | misaligned (from the core)
@@ -178,21 +170,11 @@ module rv32i_mcu #(
         .uart_tx (uart_tx)
     );
 
-    // -- slot 15: external APB slave --
-    assign apbx_psel    = psel[`MM_SIMCTL_SLOT];
-    assign apbx_penable = penable;
-    assign apbx_pwrite  = pwrite;
-    assign apbx_paddr   = paddr[11:0];
-    assign apbx_pwdata  = pwdata;
-    assign prdata[32*`MM_SIMCTL_SLOT +: 32] = apbx_prdata;
-    assign pready[`MM_SIMCTL_SLOT]          = apbx_pready;
-    assign pslverr[`MM_SIMCTL_SLOT]         = apbx_pslverr;
-
     // -- empty slots: answer at once with an error --
     genvar s;
     generate
         for (s = 0; s < NSLOT; s = s + 1) begin : g_empty
-            if (s != `MM_GPIO_SLOT && s != `MM_TIMER_SLOT && s != `MM_UART_SLOT && s != `MM_SIMCTL_SLOT) begin : g_tie
+            if (s != `MM_GPIO_SLOT && s != `MM_TIMER_SLOT && s != `MM_UART_SLOT) begin : g_tie
                 assign prdata[32*s +: 32] = 32'd0;
                 assign pready[s]          = 1'b1;
                 assign pslverr[s]         = 1'b1;

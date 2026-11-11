@@ -2,8 +2,8 @@
 // Same idea as ../riscv_test.h (stage 3), with the MCU memory map:
 //  - Code, constants and the initial values of .data are in IMEM; .data runs in DMEM.
 //    Start: copy .data from IMEM to DMEM (this uses the data-side IMEM read port), clear x1..x31.
-//  - Result: write to the SIMCTL FINISH register (APB slot 15, testbench only) and loop in place
-//    (1 = PASS, (failed test number << 1) | 1 = FAIL). This also exercises the APB path and core stall.
+//  - Result: store to the TOHOST FINISH word at the end of DMEM and loop in place
+//    (1 = PASS, (failed test number << 1) | 1 = FAIL). The testbench watches the DMEM write port.
 #ifndef _ENV_RV32I_MCU_H
 #define _ENV_RV32I_MCU_H
 
@@ -51,7 +51,7 @@ _start:                                                         \
 #define RVTEST_PASS                                             \
         fence;                                                  \
         li TESTNUM, 1;                                          \
-        li t5, SIMCTL_BASE;                                     \
+        li t5, TOHOST_BASE;                                     \
         sw TESTNUM, 0(t5);                                      \
 1:      j 1b;
 
@@ -60,7 +60,7 @@ _start:                                                         \
 1:      beqz TESTNUM, 1b;                                       \
         sll TESTNUM, TESTNUM, 1;                                \
         or TESTNUM, TESTNUM, 1;                                 \
-        li t5, SIMCTL_BASE;                                     \
+        li t5, TOHOST_BASE;                                     \
         sw TESTNUM, 0(t5);                                      \
 1:      j 1b;
 

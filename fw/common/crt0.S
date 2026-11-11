@@ -1,5 +1,5 @@
 // Startup code for C firmware on the stage 4 MCU (03_chapters/ch14a_mcu/design.md sec. 6)
-//  1. gp = __global_pointer$, sp = end of DMEM
+//  1. gp = __global_pointer$, sp = _stack_top (TOHOST, just below the end of DMEM)
 //  2. copy .data from its load image in IMEM to DMEM (word loads through the data-side IMEM port)
 //  3. clear .bss
 //  4. call main(); its return value goes to fw_exit() (sys.c), which never returns
