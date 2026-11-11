@@ -2,7 +2,7 @@
 # Genus synthesis of the ch05 single-cycle CPU core (rv32i_core) - gpdk045, slow corner
 #
 # Two ways to run (same script):
-#  (A) Batch:       bash syn/ch05_single_cycle/run_syn.sh [target period ns]   (default 10 ns)
+#  (A) Batch:       bash syn/ch05_single_cycle/run_syn.sh [target period ns]   (default 8 ns = ch05 target, 125 MHz)
 #                   -> synthesizes at 0.8 x target, runs in runs/t<target>ns/, quits, prints a summary
 #  (B) Interactive: bash syn/ch05_single_cycle/run_syn.sh -i [target period ns]
 #                   -> opens Genus in runs/work/ with the step runner loaded. Then either
@@ -32,12 +32,12 @@ if {[info exists ::env(SYN_DIR)]} {
 set ROOT [file normalize $SYN_DIR/../..]
 # Clock: synthesize at SYN_MARGIN x TARGET_PERIOD (over-constrain, default 80 %) so that PnR,
 # which adds real wire delay and clock skew, can still meet TARGET_PERIOD.
-#   TARGET_PERIOD : clock period the chip must meet (used by PnR)       default 10 ns
+#   TARGET_PERIOD : clock period the chip must meet (used by PnR)       default 8 ns (ch05 target)
 #   SYN_MARGIN    : synthesis period / target period                    default 0.8
 #   CLK_PERIOD    : period actually used in the SDC during synthesis = TARGET_PERIOD x SYN_MARGIN
 # Values set at the prompt before this step are kept, else env (run_syn.sh), else defaults.
 if {![info exists TARGET_PERIOD]} {
-    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 10.0}]
+    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 8.0}]
 }
 if {![info exists SYN_MARGIN]} {
     set SYN_MARGIN [expr {[info exists ::env(SYN_MARGIN)] ? $::env(SYN_MARGIN) : 0.8}]

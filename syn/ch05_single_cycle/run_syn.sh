@@ -2,15 +2,15 @@
 # Genus synthesis of the ch05 single-cycle CPU core (rv32i_core) (school server)
 #
 # The argument is the TARGET clock period (what the chip must meet after PnR).
-# Synthesis is over-constrained to SYN_MARGIN x target (default 0.8 -> 10 ns target = 8 ns synthesis).
+# Synthesis is over-constrained to SYN_MARGIN x target (default 0.8 -> 8 ns target = 6.4 ns synthesis).
 #
 # Batch (runs the whole flow, quits, prints an area / slack summary):
-#   bash syn/ch05_single_cycle/run_syn.sh            # target 10 ns -> synthesis 8 ns
+#   bash syn/ch05_single_cycle/run_syn.sh            # target 8 ns (ch05 target, 125 MHz) -> synthesis 6.4 ns
 #   bash syn/ch05_single_cycle/run_syn.sh 5          # target 5 ns  -> synthesis 4 ns
 #   -> run folder: syn/ch05_single_cycle/runs/t<target>ns/
 #   other margin (csh): env SYN_MARGIN=0.7 bash syn/ch05_single_cycle/run_syn.sh 10
 # Interactive (opens Genus and waits at the prompt; you enter the steps yourself):
-#   bash syn/ch05_single_cycle/run_syn.sh -i         # target 10 ns
+#   bash syn/ch05_single_cycle/run_syn.sh -i         # target 8 ns
 #   bash syn/ch05_single_cycle/run_syn.sh -i 5
 #   -> run folder: syn/ch05_single_cycle/runs/work/ (kept between sessions)
 #   -> at the genus prompt: "step 0", "step 1", ... "step 8" runs one STEP block of genus.tcl
@@ -24,7 +24,7 @@ SYN_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 MODE=batch
 if [ "$1" = "-i" ]; then MODE=interactive; shift; fi
-TARGET_PERIOD="${1:-10.0}"
+TARGET_PERIOD="${1:-8}"
 SYN_MARGIN="${SYN_MARGIN:-0.8}"
 SYN_PERIOD="$(awk -v t="$TARGET_PERIOD" -v m="$SYN_MARGIN" 'BEGIN { printf "%g", t * m }')"
 
