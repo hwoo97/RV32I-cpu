@@ -73,7 +73,7 @@ bash sim/run_xrun.sh bus_tb rtl/ch14a_mcu/bus_mux.v rtl/ch14a_mcu/apb_bridge.v s
 | 2026-11-12 | 0 % | **PASS** | xsim, 4,019 접근, APB 전송 1,314 |
 | 2026-11-12 | 30 % | **PASS** | xsim, 4,019 접근, APB 전송 1,377 |
 | 2026-11-12 | 80 % | **PASS** | xsim, 4,019 접근, APB 전송 1,326 |
-| | 30 % | 미검증 | 학교 서버 Xcelium |
+| 2026-11-12 | 30 % | **PASS** | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 버그 모델 (모두 검출)
 | 버그 | 잡은 검사 |
@@ -107,7 +107,7 @@ bash sim/run_xrun.sh gpio_tb rtl/ch14a_mcu/apb_gpio.v sim/ch14a_mcu/gpio_tb.v
 | 날짜 | 결과 | 비고 |
 |------|------|------|
 | 2026-11-12 | **PASS** | xsim, APB 전송 3,026회 |
-| | 미검증 | 학교 서버 Xcelium |
+| 2026-11-12 | **PASS** | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 버그 모델
 | 버그 | 결과 |
@@ -138,7 +138,7 @@ bash sim/run_xrun.sh timer_tb rtl/ch14a_mcu/apb_timer.v sim/ch14a_mcu/timer_tb.v
 | 날짜 | 결과 | 비고 |
 |------|------|------|
 | 2026-11-12 | **PASS** | xsim, 읽기 비교 1,473회, 일치 127회 |
-| | 미검증 | 학교 서버 Xcelium |
+| 2026-11-12 | **PASS** | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 버그 모델 (모두 검출)
 | 버그 | 잡은 검사 |
@@ -170,7 +170,7 @@ bash sim/run_xrun.sh uart_tb rtl/ch14a_mcu/apb_uart.v sim/ch14a_mcu/uart_tb.v
 | 날짜 | 결과 | 비고 |
 |------|------|------|
 | 2026-11-12 | **PASS** | xsim, 송신 프레임 163개 확인 (정해진 시험 3 + 루프백 160) |
-| | 미검증 | 학교 서버 Xcelium |
+| 2026-11-12 | **PASS** | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 버그 모델 (모두 검출)
 | 버그 | 잡은 검사 |
@@ -211,7 +211,7 @@ bash sim/ch14a_mcu/run_mcu_tests.sh 0 --gui lw
 |------|------|------|----------------:|------|
 | 2026-11-12 | SIMCTL 대기 0 % | **40 / 40 PASS** | 13,854 | xsim. 3단계(13,067)보다 테스트당 약 20사이클 많음 = `.data` 복사 + 마지막 APB 쓰기 1사이클 |
 | 2026-11-12 | SIMCTL 대기 50 % | **40 / 40 PASS** | 13,895 | 마지막 `FINISH` 쓰기에서 대기 41사이클 |
-| | | 미검증 | | 학교 서버 Xcelium |
+| 2026-11-12 | SIMCTL 대기 0 % · 50 % | **40 / 40 PASS** | | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 오류 시험 (작은 어셈블리 프로그램, 기대대로 멈춤)
 | 프로그램 | 결과 |
@@ -263,7 +263,7 @@ bash sim/ch14a_mcu/run_fw_tests.sh 0 --gui hello
 | 2026-11-12 | BAUDDIV 9 (비트 10클럭), SIMCTL 대기 0 % | **PASS** | 24,365 | xsim, 191글자. 코드 3,004바이트 |
 | 2026-11-12 | 같은 hex, SIMCTL 대기 50 % | **PASS** | 24,365 | |
 | 2026-11-12 | BAUDDIV 3 / 40으로 다시 빌드 | **PASS** / **PASS** | 14,477 / 81,177 | 해독기가 비트 길이를 따라감 |
-| | | 미검증 | | 학교 서버 Xcelium |
+| 2026-11-12 | BAUDDIV 9 | **PASS** | | 학교 서버 Xcelium, 사용자 확인 (수치 미기록) |
 
 테스트벤치 자체 시험 (기대 파일을 바꿔서)
 | 바꾼 기대 파일 | 결과 |
