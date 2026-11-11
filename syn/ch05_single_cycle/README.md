@@ -41,16 +41,41 @@ setenv GPDK045_DIR <GPDK045 폴더의 절대 경로>
 - `<GPDK045 폴더>` = 그 아래에 `digital/gsclib045_all_v4.4/`가 있는 폴더
 - 매번 치기 번거로우면 `~/.cshrc`에 같은 줄을 넣는다
 
-합성:
+같은 `genus.tcl`을 두 방식으로 쓴다. 스크립트는 `STEP 0`~`STEP 8` 블록으로 나뉘어 있다.
+
+| STEP | 내용 | 끝나고 볼 것 (대화형) |
+|:---:|------|------|
+| 0 | 경로·변수 (`CLK_PERIOD` 기본 10 ns) | |
+| 1 | 속성, 라이브러리(slow) + LEF·QRC | |
+| 2 | `read_hdl`, `elaborate` | `report_hierarchy`, `check_design` |
+| 3 | SDC | `report_clocks`, `check_timing_intent` |
+| 4 | `syn_generic` | `report_datapath` |
+| 5 | `syn_map` | `report_timing`, `report_area` |
+| 6 | `syn_opt` | `report_timing`, `report_area`, `gui_show`(회로도) |
+| 7 | 리포트 파일 저장 | |
+| 8 | 넷리스트·SDC·SDF·LEC do 파일 | |
+
+**(A) 일괄 실행** — 처음부터 끝까지 돌리고 Genus를 닫은 뒤 요약 출력
 ```bash
 bash syn/ch05_single_cycle/run_syn.sh
 ```
 ```bash
 bash syn/ch05_single_cycle/run_syn.sh 5
 ```
-- 인자 = 클럭 주기(ns), 기본 10
-- 결과: `syn/ch05_single_cycle/runs/clk<주기>ns/` 아래 `report/`(리포트), `mapped/`(넷리스트·SDC·SDF·`rtl2gate.do`), `log/` — 커밋하지 않음
-- LEF·QRC 없이 돌리려면 `USE_PHYS=0 bash syn/ch05_single_cycle/run_syn.sh`
+- 인자 = 클럭 주기(ns), 기본 10. 결과: `runs/clk<주기>ns/`
+
+**(B) 대화형** — Genus를 띄워 놓고 단계마다 결과를 보면서 진행
+```bash
+bash syn/ch05_single_cycle/run_syn.sh -i
+```
+- `runs/work/`에서 Genus 프롬프트가 열린다. 그다음 둘 중 하나:
+  - 전체: `source $env(SYN_DIR)/genus.tcl` → 끝나도 Genus가 열려 있다
+  - 단계별: `genus.tcl`의 STEP 블록을 하나씩 복사해 붙여 넣고, 사이사이 위 표의 명령으로 확인
+- 클럭 주기를 바꾸려면 `-i 5`, 또는 STEP 0 전에 프롬프트에서 `set CLK_PERIOD 5`
+- 직접 띄워도 된다: `mkdir -p syn/ch05_single_cycle/runs/work`, 그 폴더로 `cd` 후 `genus` (STEP 0이 현재 폴더 기준으로 경로를 찾음)
+
+- 결과 폴더(`runs/`)는 커밋하지 않는다
+- LEF·QRC 없이 돌리려면 csh에서 `env USE_PHYS=0 bash syn/ch05_single_cycle/run_syn.sh`
 
 ## 4. 결과
 원본 리포트는 공개하지 않고 직접 정리한 값만 적는다.

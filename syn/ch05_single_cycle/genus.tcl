@@ -1,14 +1,38 @@
 #####################################################################
 # Genus synthesis of the ch05 single-cycle CPU core (rv32i_core) - gpdk045, slow corner
-#  - Run: bash syn/ch05_single_cycle/run_syn.sh [clock period ns]   (default 10 ns)
-#    run_syn.sh passes ROOT, SYN_DIR, CLK_PERIOD as environment variables and runs in runs/clk<period>ns/
+#
+# Two ways to run (same script):
+#  (A) Batch:       bash syn/ch05_single_cycle/run_syn.sh [clock period ns]   (default 10 ns)
+#                   -> runs in runs/clk<period>ns/, quits at the end, prints a summary
+#  (B) Interactive: bash syn/ch05_single_cycle/run_syn.sh -i [clock period ns]
+#                   -> opens Genus in runs/work/ and waits at the prompt. Then either
+#                        source $SYN_DIR/genus.tcl          ;# whole flow, Genus stays open
+#                      or copy-paste the STEP blocks below one at a time and look at the
+#                      results in between (report_timing, report_area, gui_show ...)
+#                   Starting genus by hand also works: cd syn/ch05_single_cycle/runs/work; genus
+#                   (STEP 0 then finds the paths from the current folder)
+#
 #  - Memories (imem, dmem) are not synthesized. Their access time is modeled by SDC I/O delays
 #  - Outputs (reports, netlist, logs) go under runs/ and are not committed (summary only in README)
 #####################################################################
 
-set ROOT       $::env(ROOT)
-set SYN_DIR    $::env(SYN_DIR)
-set CLK_PERIOD [expr {[info exists ::env(CLK_PERIOD)] ? $::env(CLK_PERIOD) : 10.0}]
+####################################################################
+## STEP 0. Paths and variables
+####################################################################
+
+# SYN_DIR: from run_syn.sh, else from this script's location, else assume we are in SYN_DIR/runs/<dir>
+if {[info exists ::env(SYN_DIR)]} {
+    set SYN_DIR $::env(SYN_DIR)
+} elseif {[info script] ne ""} {
+    set SYN_DIR [file dirname [file normalize [info script]]]
+} else {
+    set SYN_DIR [file normalize [pwd]/../..]
+}
+set ROOT [file normalize $SYN_DIR/../..]
+# CLK_PERIOD: keep a value set at the prompt before this step, else env (run_syn.sh), else 10 ns
+if {![info exists CLK_PERIOD]} {
+    set CLK_PERIOD [expr {[info exists ::env(CLK_PERIOD)] ? $::env(CLK_PERIOD) : 10.0}]
+}
 
 set TOP_DESIGN rv32i_core
 set RTL_DIR    $ROOT/rtl/ch05_single_cycle
@@ -23,9 +47,9 @@ foreach d [list $LOG_DIR $RPT_DIR $UNMAPPED_DIR $MAPPED_DIR] { file mkdir $d }
 puts "Hostname : [info hostname]"
 puts "TOP = $TOP_DESIGN, CLK_PERIOD = $CLK_PERIOD ns"
 
-######################################################################
-# Preset global variables and attributes
-######################################################################
+####################################################################
+## STEP 1. Attributes and libraries
+####################################################################
 
 set_db auto_ungroup none              ;# keep module hierarchy -> per-module area is visible
 set_db max_cpus_per_server 2
@@ -40,7 +64,7 @@ set_db init_hdl_search_path $RTL_DIR  ;# `include "rv32i_defs.vh" is found here 
 set_db hdl_array_naming_style %s_%d
 
 ####################################################################
-## Load Design
+## STEP 2. Read RTL and elaborate
 ####################################################################
 
 read_hdl $RTL_FILES
@@ -52,7 +76,7 @@ check_design             > ${RPT_DIR}/00_check_design.rpt
 check_design -unresolved >> ${RPT_DIR}/00_check_design.rpt
 
 ####################################################################
-## Constraints Setup
+## STEP 3. Constraints (SDC)
 ####################################################################
 
 source -verbose $SYN_DIR/cons/rv32i_core.sdc
@@ -63,7 +87,7 @@ report_port -delay -driver [all_inputs] > ${RPT_DIR}/02_report_port.rpt
 report_port -delay -load [all_outputs] >> ${RPT_DIR}/02_report_port.rpt
 
 ####################################################################
-## Synthesizing to generic
+## STEP 4. Synthesize to generic gates (syn_generic)
 ####################################################################
 
 syn_generic
@@ -74,7 +98,7 @@ write_snapshot -outdir ${RPT_DIR} -tag syn_generic
 write_db -to_file ${UNMAPPED_DIR}/syn_generic.db
 
 ####################################################################
-## Synthesizing to gates
+## STEP 5. Map to library cells (syn_map)
 ####################################################################
 
 syn_map
@@ -88,7 +112,7 @@ write_snapshot -outdir ${RPT_DIR} -tag syn_map
 write_db -to_file ${MAPPED_DIR}/syn_map.db
 
 ####################################################################
-## Optimize Netlist
+## STEP 6. Optimize (syn_opt)
 ####################################################################
 
 syn_opt
@@ -102,7 +126,7 @@ foreach cg [vfind / -cost_group *] {
 write_db -to_file ${MAPPED_DIR}/syn_opt.db
 
 ####################################################################
-## Reports
+## STEP 7. Reports
 ####################################################################
 
 report_area                    > ${RPT_DIR}/09_${TOP_DESIGN}_area.rpt
@@ -119,7 +143,7 @@ report_timing -nworst 10 -net  > ${RPT_DIR}/20_${TOP_DESIGN}_timing.rpt
 report_summary
 
 ####################################################################
-## Write out (netlist, SDC, SDF, LEC do file)
+## STEP 8. Write out (netlist, SDC, SDF, LEC do file)
 ####################################################################
 
 write_design -basename ${MAPPED_DIR}/${TOP_DESIGN}_mapped
@@ -135,4 +159,9 @@ puts "============================"
 puts "Synthesis Finished ........."
 puts "============================"
 
-quit
+# Batch (run_syn.sh) quits here; interactive keeps Genus open for inspection
+if {[info exists ::env(SYN_BATCH)] && $::env(SYN_BATCH)} {
+    quit
+} else {
+    puts "Interactive: Genus stays open. Try report_timing, report_area, gui_show"
+}

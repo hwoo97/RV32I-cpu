@@ -1,10 +1,15 @@
 #!/bin/bash
-# Runs riscv-tests on the CPU testbench in one go (school server, Xcelium). PC xsim version: run_riscv_tests.py
+# Runs riscv-tests on the CPU testbench (school server, Xcelium). PC xsim version: run_riscv_tests.py
 #
+# Batch (all or named tests, PASS/FAIL summary):
 #   bash sim/run_riscv_tests.sh                 # all sim/riscv-tests-hex/rv32ui/*.hex
 #   bash sim/run_riscv_tests.sh add sub lw      # only the named tests
+# Interactive (one test in SimVision, step with "run 200ns" in the console):
+#   bash sim/run_riscv_tests.sh --gui add
+#   (same as running from the repo root:
+#    xrun -f sim/ch05_single_cycle/rv32i_sc.f -access +rwc -gui #         -input sim/ch05_single_cycle/rv32i_sc_probe.tcl +HEX=sim/riscv-tests-hex/rv32ui/add.hex)
 #
-# - Compile/elaborate design and testbench once (xrun -elaborate), then only run per test (xrun -R +HEX=...)
+# - Batch compiles/elaborates once (xrun -elaborate), then only runs per test (xrun -R +HEX=...)
 # - To run another design folder: RTL_DIR=<folder> bash sim/run_riscv_tests.sh
 # - Exit code 0 if all tests PASS
 
@@ -15,6 +20,17 @@ TB="$ROOT/sim/ch05_single_cycle/rv32i_sc_tb.v"
 HEX_DIR="$ROOT/sim/riscv-tests-hex/rv32ui"
 BUILD="$ROOT/sim/build/rv32i_sc_tb_xrun"
 TOP=rv32i_sc_tb
+
+# -- Interactive mode: one test in SimVision --
+if [ "$1" = "--gui" ]; then
+    name="${2:-simple}"
+    h="$HEX_DIR/$name.hex"
+    [ -f "$h" ] || { echo "FAIL: no hex file $h"; exit 1; }
+    GUI_DIR="$ROOT/sim/build/rv32i_sc_tb_gui"
+    mkdir -p "$GUI_DIR" && cd "$GUI_DIR" || exit 1
+    xrun -64bit -access +rwc -gui -top "$TOP" -incdir "$RTL" "$RTL"/*.v "$TB"          -input "$ROOT/sim/ch05_single_cycle/rv32i_sc_probe.tcl" -l gui.log "+HEX=$h"
+    exit $?
+fi
 
 if [ $# -gt 0 ]; then
     HEXES=(); for n in "$@"; do HEXES+=("$HEX_DIR/$n.hex"); done

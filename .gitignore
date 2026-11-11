@@ -16,6 +16,17 @@ captures/
 dataset/
 
 # Simulation output
+# Xcelium / SimVision work files (when xrun is run outside sim/build)
+xcelium.d/
+INCA_libs/
+*.shm/
+.simvision/
+xrun.history
+xrun.key
+*.diag
+# Genus / Innovus interactive work files
+genus.cmd*
+innovus.cmd*
 sim/**/build/
 sim/**/obj_dir/
 *.vcd

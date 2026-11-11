@@ -21,10 +21,19 @@ bash sim/riscv-tests-env/build_rv32ui.sh
 ```bash
 python sim/run_riscv_tests.py
 ```
-- 학교 서버 (Xcelium, `git pull` 후)
+- 학교 서버 (Xcelium, `git pull` 후) — 일괄 실행 (전체 또는 이름을 준 테스트, PASS/FAIL 요약)
 ```bash
 bash sim/run_riscv_tests.sh
 ```
+- 학교 서버 — 대화형 (테스트 하나를 SimVision으로 열고, 콘솔에서 `run 200ns`처럼 조금씩 진행하며 파형 확인)
+```bash
+bash sim/run_riscv_tests.sh --gui add
+```
+  - 저장소 루트에서 xrun을 직접 쳐도 같다 (옵션·파일 목록은 [rv32i_sc.f](../../sim/ch05_single_cycle/rv32i_sc.f), 파형 설정은 [rv32i_sc_probe.tcl](../../sim/ch05_single_cycle/rv32i_sc_probe.tcl))
+```bash
+xrun -f sim/ch05_single_cycle/rv32i_sc.f -access +rwc -gui -input sim/ch05_single_cycle/rv32i_sc_probe.tcl +HEX=sim/riscv-tests-hex/rv32ui/add.hex
+```
+  - 모듈 테스트벤치: `bash sim/run_xrun.sh <tb> <파일...>`(일괄), 끝에 `--gui`(대화형)
 - 제외: `fence_i`(Zifencei), `ma_data`(정렬 안 된 접근 — 6장)
 
 | 날짜 | 설계 | 결과 | 비고 |
