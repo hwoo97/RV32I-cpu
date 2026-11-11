@@ -94,6 +94,7 @@ x5 쓰기       안 함            클럭 에지에서 PRDATA     -
 ```
 - 결과: APB `lw`·`sw`는 최소 **2사이클**, 주변장치가 `PREADY = 0`으로 늦추면 그만큼 더 길어진다 (CPI가 1보다 커지는 첫 경우)
 - 3단계 코어는 `rtl/ch05_single_cycle`에 그대로 두고, `rtl/ch14a_mcu/`에 복사해 stall을 넣는다 (폴더 규칙)
+- **구현 (2026-11-12)**: `mem_wait = (dmem_re | (|dmem_wstrb)) & ~dmem_ready`, `mem_wait`이면 PC 유지·`reg_we` 막음. 요청이 없으면 `dmem_ready`를 보지 않는다. 대기가 끝나는 에지에서만 쓰기가 일어나야 하므로 슬레이브는 `dmem_ready = 1`인 에지에서 쓴다 → 결과는 [test.md](test.md) 1절
 - stall이 없는 기존 동작(= `dmem_ready`를 1로 묶음)이 그대로인지 rv32ui로 다시 확인한다
 
 ## 4. APB3 브리지 (`apb_bridge`)
