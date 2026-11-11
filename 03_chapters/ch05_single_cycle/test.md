@@ -34,6 +34,7 @@ bash sim/run_riscv_tests.sh --gui add
 xrun -f sim/ch05_single_cycle/rv32i_sc.f -access +rwc -gui -input sim/ch05_single_cycle/rv32i_sc_probe.tcl +HEX=sim/riscv-tests-hex/rv32ui/add.hex
 ```
   - 모듈 테스트벤치: `bash sim/run_xrun.sh <tb> <파일...>`(일괄), 끝에 `--gui`(대화형)
+- 시뮬레이션 작업물 정리: `sim` 폴더에서 `./clean.tcl` (`sim/build/`와 저장소 루트에 생긴 xrun 파일 `xcelium.d`·`*.shm`·`xrun.history` 등, `-n` = 목록만)
 - 제외: `fence_i`(Zifencei), `ma_data`(정렬 안 된 접근 — 6장)
 
 | 날짜 | 설계 | 결과 | 비고 |

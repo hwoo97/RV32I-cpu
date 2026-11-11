@@ -80,6 +80,20 @@ bash syn/ch05_single_cycle/run_syn.sh -i
 - 결과 폴더(`runs/`)는 커밋하지 않는다
 - LEF·QRC 없이 돌리려면 csh에서 `env USE_PHYS=0 bash syn/ch05_single_cycle/run_syn.sh`
 
+### 작업물 정리 (처음부터 다시)
+이 폴더에서:
+```bash
+./clean.tcl -n
+```
+```bash
+./clean.tcl
+```
+- `-n` = 지울 목록만 보기, 인자 없음 = 목록을 보여 주고 y/N 확인 후 삭제, `-y` = 확인 없이 삭제
+- 지우는 것: 이 폴더의 `runs/` 전체(일괄·대화형 결과, 로그, 리포트, 넷리스트, db)
+- Genus 프롬프트 안에서도 된다: `source $env(ROOT)/tools/clean.tcl` 후 `clean syn ch05_single_cycle`. 이때 Genus가 일하고 있는 `runs/work`는 건너뛴다 (Genus를 끝낸 뒤 지우기)
+- 공통 로직은 [tools/clean.tcl](../../tools/clean.tcl). git이 추적하는 파일과 저장소 밖 경로는 지우지 않는다
+- 서버에 `tclsh`가 있어야 한다 (`which tclsh`로 확인)
+
 ## 4. 결과
 원본 리포트는 공개하지 않고 직접 정리한 값만 적는다.
 
