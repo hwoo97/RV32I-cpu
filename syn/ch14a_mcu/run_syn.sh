@@ -72,5 +72,7 @@ echo "-- Area per module (report_area, cell area um^2) --"
 awk 'NF >= 4 && ($1 == "'$TOP'" || $1 ~ /^u_/)' report/09_${TOP}_area.rpt | head -30
 echo "-- Worst path slack (report_timing) --"
 grep -iE "slack" report/20_${TOP}_timing.rpt | head -3
+echo "-- Worst slack per path class (report/21_${TOP}_path_classes.rpt) --"
+awk '/^######## CLASS:/ {name = $3} /Slack:=/ {printf "  %-18s %s ps\n", name, $2}' report/21_${TOP}_path_classes.rpt
 echo "-- Violations (report_constraint) --"
 grep -ciE "VIOLATED" report/06_report_constraint.rpt | sed 's/^/violation lines: /'

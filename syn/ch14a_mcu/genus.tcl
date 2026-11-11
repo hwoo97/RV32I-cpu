@@ -155,6 +155,9 @@ report_messages -all           > ${RPT_DIR}/16_${TOP_DESIGN}_message.rpt
 report_power                   > ${RPT_DIR}/18_${TOP_DESIGN}_pwr.rpt
 report_qor                     > ${RPT_DIR}/19_${TOP_DESIGN}_qor.rpt
 report_timing -nworst 10 -net  > ${RPT_DIR}/20_${TOP_DESIGN}_timing.rpt
+# worst path of each path class (instruction in, memory data in, external APB, flop to flop, ...)
+source $ROOT/syn/common/path_groups.tcl
+source $SYN_DIR/path_classes.tcl      ;# -> ${RPT_DIR}/21_${TOP_DESIGN}_path_classes.rpt
 report_summary
 
 ####################################################################
