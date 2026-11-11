@@ -11,12 +11,18 @@
 #
 #   T_ADDR : time allowed from the pc flop to the imem_addr port
 #   T_MEM  : memory read time (assumption, roughly a 45nm 8 KB SRAM)
-#   T_WB   : time allowed from the dmem_rdata port to the register file input
+#   T_WB   : core time allowed from the dmem_rdata port to the register file input
 #####################################################################
 
 set T_ADDR 0.5
 set T_MEM  1.0
-set T_WB   1.0
+# T_WB: share of the core logic time AFTER the memory read (the rest of the cycle, minus memory time,
+# is the share BEFORE it). It is a split of core time, not a memory speed. 1.0 ns until 2026-11-12;
+# 1.2 ns since then for both stage 3 and the MCU (the MCU adds the read-data select of the address
+# decoder after the memory). Set T_WB at the prompt or in the environment to try another split.
+if {![info exists T_WB]} {
+    set T_WB [expr {[info exists ::env(T_WB)] ? $::env(T_WB) : 1.2}]
+}
 set T_WSU  0.3     ;# dmem write setup (the write happens at the next clock edge)
 
 create_clock -name clk -period $CLK_PERIOD [get_ports clk]
