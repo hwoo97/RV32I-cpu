@@ -68,9 +68,12 @@ bash syn/ch05_single_cycle/run_syn.sh 5
 ```bash
 bash syn/ch05_single_cycle/run_syn.sh -i
 ```
-- `runs/work/`에서 Genus 프롬프트가 열린다. 그다음 둘 중 하나:
+- `runs/work/`에서 Genus 프롬프트가 열리고, **STEP 실행 도우미**([syn/common/steps.tcl](../common/steps.tcl))가 함께 로드된다.
+  - 단계별: 프롬프트에 `step 0`, `step 1`, … `step 8`을 차례로 입력하고, 사이사이 위 표의 명령으로 확인
+    - 복사·붙여 넣기가 필요 없다. 도우미가 `genus.tcl`에서 해당 STEP 블록을 읽어 그대로 실행한다
+    - `steps` = STEP 목록, `show_step 5` = STEP 5 내용을 실행하지 않고 출력
   - 전체: `source $env(SYN_DIR)/genus.tcl` → 끝나도 Genus가 열려 있다
-  - 단계별: `genus.tcl`의 STEP 블록을 하나씩 복사해 붙여 넣고, 사이사이 위 표의 명령으로 확인
+  - 직접 복사해 붙여 넣는 것도 되지만, Vim 화면에서 마우스로 복사하면 화면 글자(줄 번호, `%`, 안내 문구)가 섞일 수 있다
 - 클럭 주기를 바꾸려면 `-i 5`, 또는 STEP 0 전에 프롬프트에서 `set CLK_PERIOD 5`
 - 직접 띄워도 된다: `mkdir -p syn/ch05_single_cycle/runs/work`, 그 폴더로 `cd` 후 `genus` (STEP 0이 현재 폴더 기준으로 경로를 찾음)
 

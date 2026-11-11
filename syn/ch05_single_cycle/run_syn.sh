@@ -9,8 +9,8 @@
 #   bash syn/ch05_single_cycle/run_syn.sh -i         # clock period 10 ns
 #   bash syn/ch05_single_cycle/run_syn.sh -i 5
 #   -> run folder: syn/ch05_single_cycle/runs/work/ (kept between sessions)
-#   -> at the genus prompt: "source $SYN_DIR/genus.tcl" (whole flow, stays open)
-#      or copy-paste the STEP 0 .. STEP 8 blocks of genus.tcl one at a time
+#   -> at the genus prompt: "step 0", "step 1", ... "step 8" runs one STEP block of genus.tcl
+#      (no copy-paste; see syn/common/steps.tcl), or "source $env(SYN_DIR)/genus.tcl" for all
 #
 # - Set the GPDK045_DIR environment variable first (csh: setenv GPDK045_DIR <GPDK045 folder>)
 # - Run folders (log, report, mapped, unmapped) are not committed
@@ -29,13 +29,14 @@ fi
 export ROOT SYN_DIR CLK_PERIOD
 
 # -- Interactive: open Genus in runs/work and hand over the prompt --
+# genus -f <steps.tcl> loads the step runner and then stays at the prompt
 if [ "$MODE" = interactive ]; then
     mkdir -p "$SYN_DIR/runs/work/log" && cd "$SYN_DIR/runs/work" || exit 1
+    export SYN_BATCH=0 FLOW_SCRIPT="$SYN_DIR/genus.tcl"
     echo "Genus interactive, folder: $PWD, CLK_PERIOD = $CLK_PERIOD ns"
-    echo "  whole flow : source \$env(SYN_DIR)/genus.tcl"
-    echo "  step by step: copy-paste STEP 0 .. STEP 8 from $SYN_DIR/genus.tcl"
-    export SYN_BATCH=0
-    exec genus -log log/genus.log
+    echo "  step by step : step 0, step 1, ... step 8   (steps = list, show_step <n> = print)"
+    echo "  whole flow   : source \$env(SYN_DIR)/genus.tcl"
+    exec genus -f "$ROOT/syn/common/steps.tcl" -log log/genus.log
 fi
 
 # -- Batch --

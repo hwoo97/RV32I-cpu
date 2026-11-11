@@ -5,10 +5,11 @@
 #  (A) Batch:       bash syn/ch05_single_cycle/run_syn.sh [clock period ns]   (default 10 ns)
 #                   -> runs in runs/clk<period>ns/, quits at the end, prints a summary
 #  (B) Interactive: bash syn/ch05_single_cycle/run_syn.sh -i [clock period ns]
-#                   -> opens Genus in runs/work/ and waits at the prompt. Then either
-#                        source $SYN_DIR/genus.tcl          ;# whole flow, Genus stays open
-#                      or copy-paste the STEP blocks below one at a time and look at the
-#                      results in between (report_timing, report_area, gui_show ...)
+#                   -> opens Genus in runs/work/ with the step runner loaded. Then either
+#                        step 0 ... step 8                  ;# one STEP block at a time, look at the
+#                                                           ;# results in between (report_timing ...)
+#                        source $env(SYN_DIR)/genus.tcl     ;# whole flow, Genus stays open
+#                      Copy-pasting a STEP block by hand also works.
 #                   Starting genus by hand also works: cd syn/ch05_single_cycle/runs/work; genus
 #                   (STEP 0 then finds the paths from the current folder)
 #
