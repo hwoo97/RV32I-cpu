@@ -13,6 +13,7 @@ Environment variables to run another testbench (defaults = stage 3 rv32i_sc_tb):
   TB_TOP     testbench top module                             (default rv32i_sc_tb)
   EXTRA_SRC  extra Verilog files, space separated              (default none)
   PLUSARGS   extra plusargs, space separated, e.g. "WAITPCT=30 SEED=7"
+  HEX_DIR    folder of the test hex files                     (default sim/riscv-tests-hex/rv32ui)
 """
 import glob
 import os
@@ -26,7 +27,7 @@ TB = os.path.abspath(os.environ.get("TB_FILE", os.path.join(ROOT, "sim", "ch05_s
 TOP = os.environ.get("TB_TOP", "rv32i_sc_tb")
 EXTRA = [os.path.abspath(f) for f in os.environ.get("EXTRA_SRC", "").split()]
 PLUSARGS = os.environ.get("PLUSARGS", "").split()
-HEX_DIR = os.path.join(ROOT, "sim", "riscv-tests-hex", "rv32ui")
+HEX_DIR = os.path.abspath(os.environ.get("HEX_DIR", os.path.join(ROOT, "sim", "riscv-tests-hex", "rv32ui")))
 BUILD = os.path.join(ROOT, "sim", "build", TOP)
 
 

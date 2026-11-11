@@ -32,7 +32,8 @@ mcu_top  (simulation / FPGA top)
 - 명령어 가져오기는 `imem_*` 포트로 한 사이클 안에 끝난다 (IMEM 읽기 포트 1)
 - 데이터 포트(`dmem_*`)는 주소 디코더가 **IMEM 읽기(`irom_*`, IMEM 읽기 포트 2) / DMEM(`ram_*`) / APB** 중 하나로 보낸다
 - IMEM·DMEM 접근은 대기 없이 한 사이클, **APB 접근만 코어를 멈춘다(stall)**
-- `rv32i_mcu`의 메모리 포트 3개: `imem_*`(가져오기), `irom_*`(데이터 쪽 IMEM 읽기, 읽기 전용), `ram_*`(DMEM 읽기·쓰기) — 이름은 RTL 작성 때 확정
+- `rv32i_mcu`의 메모리 포트 3개: `imem_*`(가져오기), `irom_*`(데이터 쪽 IMEM 읽기, 읽기 전용), `ram_*`(DMEM 읽기·쓰기)
+- **구현 (2026-11-12)**: [rv32i_mcu.v](../../rtl/ch14a_mcu/rv32i_mcu.v) (슬롯 0 GPIO, 1 TIMER, 2 UART, 15 외부 `apbx_*`, 나머지 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`, 출력 `trap`·`bus_err`·`timer_irq`), [mcu_top.v](../../rtl/ch14a_mcu/mcu_top.v) (+ `mcu_imem` 2포트, `mcu_dmem`). 3단계 메모리 모델과 이름이 겹치지 않게 `mcu_` 앞머리 → [test.md](test.md) 7절
 
 ## 2. 메모리 맵
 | 주소 | 크기 | 대상 | 접근 | 비고 |

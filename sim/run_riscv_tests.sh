@@ -17,13 +17,14 @@
 #     TB_TOP     testbench top module                             (default rv32i_sc_tb)
 #     EXTRA_SRC  extra Verilog files, space separated              (default none)
 #     PLUSARGS   extra plusargs, space separated, e.g. "WAITPCT=30 SEED=7"
+#     HEX_DIR    folder of the test hex files                     (default sim/riscv-tests-hex/rv32ui)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RTL="${RTL_DIR:-$ROOT/rtl/ch05_single_cycle}"
 RTL="$(cd "$RTL" && pwd)"
 TB="$(cd "$(dirname "${TB_FILE:-$ROOT/sim/ch05_single_cycle/rv32i_sc_tb.v}")" && pwd)/$(basename "${TB_FILE:-rv32i_sc_tb.v}")"
 TOP="${TB_TOP:-rv32i_sc_tb}"
-HEX_DIR="$ROOT/sim/riscv-tests-hex/rv32ui"
+HEX_DIR="$(cd "${HEX_DIR:-$ROOT/sim/riscv-tests-hex/rv32ui}" && pwd)"
 BUILD="$ROOT/sim/build/${TOP}_xrun"
 
 # Extra sources (absolute paths) and their folders as include dirs

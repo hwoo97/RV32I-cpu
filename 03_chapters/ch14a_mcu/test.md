@@ -183,3 +183,43 @@ bash sim/run_xrun.sh uart_tb rtl/ch14a_mcu/apb_uart.v sim/ch14a_mcu/uart_tb.v
 | 글리치를 시작 비트로 받음 | 글리치 시험, 루프백 |
 | 송신 정지 비트 빠짐 | 송신 모니터 (정지 비트) |
 | RXDATA를 읽어도 RX_VALID 유지 | STATUS |
+
+## 7. MCU 전체 — `rv32i_mcu.v`, `mcu_top.v` (riscv-tests)
+구성: `mcu_top` = `rv32i_mcu`(코어 + 디코더 + APB 브리지 + GPIO·TIMER·UART, 빈 슬롯은 `PREADY = 1`·`PSLVERR = 1`) + `mcu_imem`(16 KB, 읽기 포트 2) + `mcu_dmem`(16 KB). 테스트벤치가 슬롯 15에 SIMCTL을 붙인다.
+
+MCU용 riscv-tests
+- 환경 [sim/riscv-tests-env/mcu/](../../sim/riscv-tests-env/mcu/riscv_test.h): 시작할 때 `.data`를 IMEM → DMEM으로 복사(데이터 쪽 IMEM 읽기 포트 사용), 결과는 SIMCTL `FINISH`(APB)에 써서 판정 → APB 경로와 코어 대기까지 함께 시험
+- 링커 스크립트 [mcu/link.ld](../../sim/riscv-tests-env/mcu/link.ld): `INCLUDE memmap.ld` (주소 표에서 생성), 코드·상수·`.data` 초기값은 IMEM, `.data` 실행 주소는 DMEM
+- 빌드 (WSL, 테스트나 메모리 맵이 바뀔 때만): `bash sim/riscv-tests-env/build_rv32ui.sh ~/riscv-tests mcu` → `sim/riscv-tests-hex/rv32ui_mcu/` (커밋)
+
+실행 방법
+- 이 PC (xsim)
+```bash
+python sim/ch14a_mcu/run_mcu_tests.py
+```
+- 학교 서버 (Xcelium) — 일괄
+```bash
+bash sim/ch14a_mcu/run_mcu_tests.sh
+```
+- 학교 서버 — 대화형 (테스트 하나를 SimVision으로)
+```bash
+bash sim/ch14a_mcu/run_mcu_tests.sh 0 --gui lw
+```
+- 첫 인자 = SIMCTL 슬레이브의 대기 비율 % (기본 0)
+
+| 날짜 | 조건 | 결과 | 사이클 (40개 합) | 비고 |
+|------|------|------|----------------:|------|
+| 2026-11-12 | SIMCTL 대기 0 % | **40 / 40 PASS** | 13,854 | xsim. 3단계(13,067)보다 테스트당 약 20사이클 많음 = `.data` 복사 + 마지막 APB 쓰기 1사이클 |
+| 2026-11-12 | SIMCTL 대기 50 % | **40 / 40 PASS** | 13,895 | 마지막 `FINISH` 쓰기에서 대기 41사이클 |
+| | | 미검증 | | 학교 서버 Xcelium |
+
+오류 시험 (작은 어셈블리 프로그램, 기대대로 멈춤)
+| 프로그램 | 결과 |
+|----------|------|
+| 빈 슬롯(0x4000_5000) 읽기 | `bus_err` (data_err), 멈추지 않고 바로 오류 |
+| 주변장치(TIMER)에 `sb` | `bus_err` (data_err) |
+| IMEM(0x100)에 `sw` | `bus_err` (data_err) |
+| IMEM 밖(0x2000_0000)으로 점프 | `bus_err` (fetch_err) |
+| GPIO 쓰고 읽기 → SIMCTL `PUTC`로 "OK" 출력 → `FINISH` 1 | PASS (22사이클) |
+
+회귀: 3단계 rv32ui 40/40, 코어 대기 30 % 40/40, bus_tb PASS (MCU 파일을 추가한 뒤 다시 확인)
