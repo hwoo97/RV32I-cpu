@@ -104,3 +104,19 @@ bash sim/ch06_exception/run_fw_tests.sh
 |------|------|-------:|------|
 | 2026-11-14 | **PASS** | 24,366 | xsim, 191글자. 4단계(24,364)보다 2사이클 많음 = 리셋 동기화기 |
 | 2026-11-14 | **PASS** | 24,366 | 학교 서버 Xcelium (사용자), xsim과 같음 |
+
+## 5. 칩 시뮬레이션 — `rv32i_chip` (IO 패드 포함)
+- [chip_tb.v](../../sim/ch06_exception/chip_tb.v): 메모리를 **칩 핀**에 단다 (12비트 워드 주소). 결과는 칩의 DMEM 쓰기 핀을 TOHOST 감시기로 본다. `EXT_IRQ = GPIO[15]`(풀다운), `UART_RX = UART_TX`
+- 패드 모델: 이 PC는 직접 쓴 단순 모델([pad_models.v](../../sim/ch06_exception/pad_models.v), [pad_power.v](../../sim/ch06_exception/pad_power.v), 지연 없음), 서버는 PDK 모델 `pads_SS_s1vg.v`(지연 포함) + `pad_power.v`
+```bash
+python sim/ch06_exception/run_chip_tests.py
+```
+```bash
+bash sim/ch06_exception/run_chip_tests.sh
+```
+
+| 날짜 | 묶음 | 결과 | 비고 |
+|------|------|------|------|
+| 2026-11-14 | rv32ui / rv32mi / trap | **40/40, 15/15, 3/3 PASS** | xsim, 단순 패드 모델. rv32ui 합 15,774사이클 = MCU 수준과 같음 |
+| | 전체 | 미검증 | 학교 서버 Xcelium, PDK 패드 모델 |
+- `fw/hello`는 칩에서 돌리지 않는다: hello는 GPIO 입력이 따로 있는 4단계 시험 배선(`gpio_in = {gpio_out[7:0], 8'hC3}`)을 전제로 하는데, 칩의 GPIO는 양방향 패드 하나라 같은 배선을 만들 수 없다. 칩 경로는 riscv-tests와 트랩 시험이 확인한다

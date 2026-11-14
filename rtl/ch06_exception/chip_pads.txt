@@ -1,0 +1,58 @@
+# Pad table of the ch6 single-cycle MCU chip - the single source of the pad ring
+# (03_chapters/ch06_exception/chip.md sec. 2-4)
+# After editing, run:  python tools/gen_chip.py
+# It regenerates (do not edit those by hand):
+#   rtl/ch06_exception/rv32i_chip.v     chip top: rv32i_mcu + one pad instance per line below
+#   pnr/ch06_chip/rv32i_chip.io         Innovus IO file: pad order on each side
+#
+# Columns: side  port  kind  core
+#   side : N, E, S, W (pads are listed in the order they are placed on that side)
+#   port : chip port name; a bus is written NAME[msb:lsb] and expands to one pad per bit (lsb first)
+#   kind : PI = input pad (PADDI: PAD -> Y)          PO = output pad (PADDO: A -> PAD)
+#          PB = bidirectional pad (PADDB: A, OEN (0 = drive), PAD, Y) - for GPIO
+#          VDD / VSS = core power pad (PADVDD / PADVSS), VDDIO / VSSIO = IO ring power (PADVDDIOR / PADVSSIOR)
+#   core : rv32i_mcu port (bus part-select allowed, same width as the chip port); "-" for power pads
+#          PB: the gpio bit index; A = gpio_out, OEN = ~gpio_oe, Y = gpio_in
+
+# ---- North: instruction fetch (IMEM port A) ----
+N  IMEM_ADDR[11:0]    PO   imem_addr[13:2]
+N  P_N_VDD            VDD  -
+N  P_N_VSS            VSS  -
+N  P_N_VDDIO          VDDIO -
+N  P_N_VSSIO          VSSIO -
+N  IMEM_DATA[31:0]    PI   imem_rdata[31:0]
+
+# ---- East: data address and DMEM write ----
+E  DADDR[11:0]        PO   ram_addr[13:2]
+E  RAM_WSTRB[3:0]     PO   ram_wstrb[3:0]
+E  RAM_WDATA[15:0]    PO   ram_wdata[15:0]
+E  P_E_VDD            VDD  -
+E  P_E_VSS            VSS  -
+E  P_E_VDDIO          VDDIO -
+E  P_E_VSSIO          VSSIO -
+E  RAM_WDATA[31:16]   PO   ram_wdata[31:16]
+
+# ---- South: DMEM read data and GPIO ----
+S  RAM_RDATA[31:0]    PI   ram_rdata[31:0]
+S  P_S_VDD            VDD  -
+S  P_S_VSS            VSS  -
+S  P_S_VDDIO          VDDIO -
+S  P_S_VSSIO          VSSIO -
+S  GPIO[15:0]         PB   gpio[15:0]
+
+# ---- West: IMEM data-side read, clock / reset / interrupt, UART, status ----
+W  IROM_DATA[15:0]    PI   irom_rdata[15:0]
+W  RST_N              PI   rst_n
+W  EXT_IRQ            PI   ext_irq
+W  P_W_VDD            VDD  -
+W  P_W_VSS            VSS  -
+W  CLK                PI   clk
+W  P_W_VDDIO          VDDIO -
+W  P_W_VSSIO          VSSIO -
+W  UART_RX            PI   uart_rx
+W  UART_TX            PO   uart_tx
+W  TRAP               PO   trap
+W  IRQ_TAKEN          PO   irq_taken
+W  BUS_ERR            PO   bus_err
+W  TIMER_IRQ          PO   timer_irq
+W  IROM_DATA[31:16]   PI   irom_rdata[31:16]

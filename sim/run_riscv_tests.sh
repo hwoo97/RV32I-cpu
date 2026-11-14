@@ -18,6 +18,7 @@
 #     EXTRA_SRC  extra Verilog files, space separated              (default none)
 #     PLUSARGS   extra plusargs, space separated, e.g. "WAITPCT=30 SEED=7"
 #     HEX_DIR    folder of the test hex files                     (default sim/riscv-tests-hex/rv32ui)
+#     XRUN_OPTS  extra xrun options, e.g. "-timescale 1ns/1ps" for library models without `timescale
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RTL="${RTL_DIR:-$ROOT/rtl/ch05_single_cycle}"
@@ -33,6 +34,7 @@ for f in $EXTRA_SRC; do
     d="$(cd "$(dirname "$f")" && pwd)"; EXTRA+=("$d/$(basename "$f")"); INCS+=(-incdir "$d")
 done
 PLUS=(); for a in $PLUSARGS; do PLUS+=("+$a"); done
+XOPTS=($XRUN_OPTS)
 
 # -- Interactive mode: one test in SimVision --
 if [ "$1" = "--gui" ]; then
@@ -46,7 +48,7 @@ if [ "$1" = "--gui" ]; then
 probe -create %s -all -depth all -database waves
 puts "probes ready: type run 200ns or run"
 ' "$TOP" > probe.tcl
-    xrun -64bit -access +rwc -gui -top "$TOP" "${INCS[@]}" "$RTL"/*.v "${EXTRA[@]}" "$TB"          -input probe.tcl -l gui.log "+HEX=$h" "${PLUS[@]}"
+    xrun -64bit "${XOPTS[@]}" -access +rwc -gui -top "$TOP" "${INCS[@]}" "$RTL"/*.v "${EXTRA[@]}" "$TB"          -input probe.tcl -l gui.log "+HEX=$h" "${PLUS[@]}"
     exit $?
 fi
 
@@ -58,7 +60,7 @@ fi
 
 rm -rf "$BUILD" && mkdir -p "$BUILD" && cd "$BUILD" || exit 1
 
-xrun -64bit -elaborate -top "$TOP" "${INCS[@]}" "$RTL"/*.v "${EXTRA[@]}" "$TB" -l compile.log > /dev/null 2>&1
+xrun -64bit "${XOPTS[@]}" -elaborate -top "$TOP" "${INCS[@]}" "$RTL"/*.v "${EXTRA[@]}" "$TB" -l compile.log > /dev/null 2>&1
 if [ $? -ne 0 ] || grep -q "\*E" compile.log; then
     grep "\*E" compile.log | head -10
     echo "FAIL: compile error (log: $BUILD/compile.log)"
