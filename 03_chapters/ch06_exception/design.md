@@ -104,7 +104,7 @@ mret:      PC <- mepc, MIE <- MPIE, MPIE <- 1
 | 1 | CSR 파일 단독 | 테스트벤치(읽기·쓰기·고정 비트·카운터·트랩 갱신) | 자가 검사 PASS, 버그 모델 검출 |
 | 2 | 코어 + 메모리 (4단계 `core_wait_tb`와 같은 틀) | riscv-tests **원래 환경 기반** `env/mcu_p`(아래), 무작위 대기 | rv32ui 40 + `ma_data`, rv32mi 목표 목록 PASS |
 | 3 | MCU 전체 | `mcu_tb` (TOHOST) | rv32ui·rv32mi |
-| 4 | 펌웨어 | 트랩 처리기·타이머 인터럽트 `fw/timer_irq` | UART 출력 비교 (4단계 `fw_tb`), 인터럽트 횟수·간격 |
+| 4 | 펌웨어 | ~~C 트랩 처리기·타이머 인터럽트 `fw/timer_irq`~~ → **7단계 보드 데모 때** (2026-11-14 결정) | 하드웨어 확인은 1~3번(어셈블리 트랩 시험 포함)으로 충분. 6장에서는 기존 `fw/hello`를 6장 MCU에서 회귀만 |
 | 5 | 회귀 | `fw/hello`, 4단계 시험 | PASS |
 | 6 | 합성 | `syn/ch06_exception` (목표 8.5 ns) | 4단계 MCU와 면적·타이밍 비교 |
 
@@ -121,7 +121,7 @@ mret:      PC <- mepc, MIE <- MPIE, MPIE <- 1
 | `rtl/ch06_exception/` | 4단계 `rtl/ch14a_mcu/` 전체 복사 → `rv32i_core.v`(트랩 추가), `control.v`(SYSTEM 명령어 해독), **`csr.v`**(새 모듈: CSR 파일·카운터·트랩 갱신), `rv32i_mcu.v`(리셋 동기화기, `ext_irq`, 인터럽트 연결) |
 | `sim/ch06_exception/` | `csr_tb.v`, 코어·MCU 테스트벤치(4단계 것 복사), 실행 스크립트(.sh·.py) |
 | `sim/riscv-tests-env/mcu_p/` | `riscv_test.h`, `link.ld` (원래 환경 기반) |
-| `fw/` | `common/`에 트랩 진입 코드(레지스터 저장·복원)와 `csr.h`, `fw/timer_irq/` |
+| `fw/` | (7단계로) `common/`에 트랩 진입 코드와 `csr.h`, 인터럽트 예제. CSR을 쓰는 펌웨어는 6장 이후 MCU 전용이라 빌드 대상을 나눔 |
 | `syn/ch06_exception/` | 4단계 스크립트 복사 (+ `clean.tcl`) |
 - 7·8장 코어가 그대로 가져다 쓸 수 있게 **CSR 파일과 트랩 판단을 `csr.v` 하나로** 모은다. 코어는 "이 명령어에서 어떤 예외가 났나"와 "명령어가 끝났나"만 알려 준다
 

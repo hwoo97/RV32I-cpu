@@ -89,3 +89,18 @@ bash sim/ch06_exception/run_mcu_tests.sh trap --gui irq_timer
 | `mret`이 `MPIE`를 무시하고 `MIE = 1` | ✗ (처리기에 들어올 때 늘 `MIE = 1`이라 드러나지 않음) → csr_tb가 검출 |
 
 회귀: 4단계 MCU riscv-tests 40/40, hello PASS. 빌드 스크립트를 고친 뒤 `min`·`mcu` 환경 hex를 다시 만들어도 바뀐 파일 없음
+
+## 4. 펌웨어 회귀 — `fw/hello`를 6장 MCU에서
+- C 인터럽트 펌웨어는 7단계 보드 데모로 옮김 (2026-11-14 결정, [design.md](design.md) 6절). 6장에서는 4단계 펌웨어가 새 코어에서도 그대로 도는지만 확인
+- 테스트벤치 [fw_exc_tb.v](../../sim/ch06_exception/fw_exc_tb.v): 4단계 `fw_tb.v` 복사 + 6장 포트(`ext_irq = 0`, `irq_taken`). `hello`는 트랩이 없어야 하므로 트랩이 나면 FAIL
+```bash
+python sim/ch06_exception/run_fw_tests.py
+```
+```bash
+bash sim/ch06_exception/run_fw_tests.sh
+```
+
+| 날짜 | 결과 | 사이클 | 비고 |
+|------|------|-------:|------|
+| 2026-11-14 | **PASS** | 24,366 | xsim, 191글자. 4단계(24,364)보다 2사이클 많음 = 리셋 동기화기 |
+| | 미검증 | | 학교 서버 Xcelium |
