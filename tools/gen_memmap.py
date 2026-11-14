@@ -4,7 +4,8 @@
     python tools/gen_memmap.py --check   # only compare: exit 1 if a generated file is missing or out of date
 
 Generated files (committed, so the school server needs no Python):
-    rtl/ch14a_mcu/mcu_memmap.vh   Verilog `define: base, size, mask, address width, hit test, APB slot
+    rtl/<chapter>/mcu_memmap.vh   Verilog `define: base, size, mask, address width, hit test, APB slot
+                                  (one copy in every MCU chapter folder: ch14a_mcu, ch06_exception, ...)
     fw/common/memmap.h            C #define: base and size
     fw/common/memmap.ld           linker MEMORY block for the 'mem' regions, symbols for 'area' regions
 
@@ -18,7 +19,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TABLE = os.path.join(ROOT, "fw", "common", "memmap.txt")
-OUT_VH = os.path.join(ROOT, "rtl", "ch14a_mcu", "mcu_memmap.vh")
+# every MCU chapter folder keeps its own copy (chapter folders are copied, not shared)
+OUT_VHS = [os.path.join(ROOT, "rtl", ch, "mcu_memmap.vh") for ch in ("ch14a_mcu", "ch06_exception")]
 OUT_H = os.path.join(ROOT, "fw", "common", "memmap.h")
 OUT_LD = os.path.join(ROOT, "fw", "common", "memmap.ld")
 
@@ -182,7 +184,9 @@ def main():
     check_only = "--check" in sys.argv[1:]
     regions = read_table(TABLE)
     lsb, msb = check(regions)
-    outputs = {OUT_VH: gen_vh(regions, lsb, msb), OUT_H: gen_h(regions), OUT_LD: gen_ld(regions)}
+    vh = gen_vh(regions, lsb, msb)
+    outputs = {p: vh for p in OUT_VHS}
+    outputs.update({OUT_H: gen_h(regions), OUT_LD: gen_ld(regions)})
     stale = []
     for path, text in outputs.items():
         old = open(path, encoding="utf-8", newline="").read().replace("\r\n", "\n") if os.path.exists(path) else None

@@ -119,4 +119,6 @@ fv/
 !sim/riscv-tests-hex/**/*.hex
 # Exception: firmware simulation images (built in WSL by make, run on the school server)
 !fw/hex/*.hex
+# Exception: ch6 trap test images
+!sim/ch06_exception/tests/hex/*.hex
 *.elf
