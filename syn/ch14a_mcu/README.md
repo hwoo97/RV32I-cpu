@@ -60,6 +60,18 @@ bash syn/ch14a_mcu/run_syn.sh -i
 | 7 | 리포트 저장 | |
 | 8 | 넷리스트·SDC·SDF·LEC do 파일 | |
 
+**(C) GUI로 진행 과정 보기** (2026-11-14 추가) — Genus GUI 창을 띄워 합성이 진행되는 것을 보면서
+```bash
+bash syn/ch14a_mcu/run_syn.sh --gui
+```
+- GUI 창이 열리고 STEP 0~8이 그 안에서 자동으로 실행된다. 창의 로그에 단계별 진행(`syn_generic` → `syn_map` → `syn_opt`)이 나오고, 끝나도 Genus가 열려 있어 회로도·타이밍 경로·리포트를 GUI에서 볼 수 있다 (닫기: 프롬프트에 `exit`)
+- 단계마다 직접 진행하면서 GUI로 보려면 `-i --gui` (프롬프트에서 `step 0` … `step 8`)
+- 목표 주기는 일괄과 같이 마지막 인자: `--gui 9`
+- 결과 폴더는 `runs/work/` (대화형과 같음)
+- **X 화면이 필요하다**: MobaXterm으로 접속하면 X11 전달이 기본으로 켜져 있다. `DISPLAY`가 비어 있으면 스크립트가 오류로 멈춘다 (`echo $DISPLAY`로 확인)
+- 이 Genus 버전이 `-gui` 옵션을 받지 않으면 `-i`로 띄운 뒤 프롬프트에 `gui_show`
+- 원격 GUI는 화면 전송 때문에 일괄보다 느릴 수 있다. 결과 수치는 일괄과 같다 (같은 `genus.tcl`)
+
 **작업물 정리**: 이 폴더에서 `./clean.tcl -n` (목록), `./clean.tcl` (확인 후 삭제)
 
 ## 4. 예상과 미리 확인한 것

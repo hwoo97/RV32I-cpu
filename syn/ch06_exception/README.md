@@ -21,6 +21,7 @@ bash syn/ch06_exception/run_syn.sh
 ```
 - 대화형: `bash syn/ch06_exception/run_syn.sh -i` 후 `step 0` … `step 8`
 - 끝나면 모듈별 면적, 최악 slack, 경로 종류별 slack, 위반 줄 수를 출력
+- **GUI로 진행 과정 보기**: `bash syn/ch06_exception/run_syn.sh --gui` (GUI 창에서 전체 흐름 자동 실행, 끝나도 열려 있음), 단계별은 `-i --gui`. 자세한 내용은 [ch05 README 3절 (C)](../ch05_single_cycle/README.md)
 
 ## 3. 예상
 - 순차 셀: 4단계 + CSR(카운터 128, `mtvec`·`mepc`·`mscratch`·`mtval` 등 약 130, 상태 비트) + 동기화기 4 → 약 +260개

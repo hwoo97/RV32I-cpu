@@ -15,6 +15,13 @@
 #   -> run folder: syn/ch06_exception/runs/work/ (kept between sessions)
 #   -> at the genus prompt: "step 0", "step 1", ... "step 8" runs one STEP block of genus.tcl
 #      (no copy-paste; see syn/common/steps.tcl), or "source $env(SYN_DIR)/genus.tcl" for all
+# GUI (needs an X display: MobaXterm with X11 forwarding):
+#   bash syn/ch06_exception/run_syn.sh --gui           # open the Genus GUI and run the whole flow in it,
+#                                             # watch the log and the design; stays open at the end
+#   bash syn/ch06_exception/run_syn.sh -i --gui        # GUI + prompt, run the steps yourself (step 0 ... step 8)
+#   bash syn/ch06_exception/run_syn.sh --gui 5         # target period as the last argument, as in batch
+#   -> run folder: syn/ch06_exception/runs/work/ (same as -i)
+#   -> if this Genus version does not accept -gui, start with -i and type gui_show at the prompt
 #
 # - Set the GPDK045_DIR environment variable first (csh: setenv GPDK045_DIR <GPDK045 folder>)
 # - Run folders (log, report, mapped, unmapped) are not committed
@@ -23,7 +30,14 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SYN_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 MODE=batch
-if [ "$1" = "-i" ]; then MODE=interactive; shift; fi
+GUI=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -i)    MODE=interactive; shift ;;
+        --gui) GUI=1; shift ;;
+        *)     break ;;
+    esac
+done
 TARGET_PERIOD="${1:-8.5}"
 SYN_MARGIN="${SYN_MARGIN:-0.8}"
 SYN_PERIOD="$(awk -v t="$TARGET_PERIOD" -v m="$SYN_MARGIN" 'BEGIN { printf "%g", t * m }')"
@@ -34,15 +48,36 @@ if [ -z "$GPDK045_DIR" ]; then
 fi
 export ROOT SYN_DIR TARGET_PERIOD SYN_MARGIN
 
-# -- Interactive: open Genus in runs/work and hand over the prompt --
+GENUS_GUI=""
+if [ "$GUI" = 1 ]; then
+    if [ -z "$DISPLAY" ]; then
+        echo "ERROR: --gui needs an X display (DISPLAY is empty). Use MobaXterm with X11 forwarding, then run again"
+        exit 1
+    fi
+    GENUS_GUI="-gui"
+fi
+
+# -- Interactive: open Genus in runs/work and hand over the prompt (with --gui: also the GUI window) --
 # genus -f <steps.tcl> loads the step runner and then stays at the prompt
 if [ "$MODE" = interactive ]; then
     mkdir -p "$SYN_DIR/runs/work/log" && cd "$SYN_DIR/runs/work" || exit 1
     export SYN_BATCH=0 FLOW_SCRIPT="$SYN_DIR/genus.tcl"
-    echo "Genus interactive, folder: $PWD, target $TARGET_PERIOD ns -> synthesis $SYN_PERIOD ns (x $SYN_MARGIN)"
+    echo "Genus interactive${GENUS_GUI:+ with GUI}, folder: $PWD, target $TARGET_PERIOD ns -> synthesis $SYN_PERIOD ns (x $SYN_MARGIN)"
     echo "  step by step : step 0, step 1, ... step 8   (steps = list, show_step <n> = print)"
     echo "  whole flow   : source \$env(SYN_DIR)/genus.tcl"
-    exec genus -f "$ROOT/syn/common/steps.tcl" -log log/genus.log
+    exec genus $GENUS_GUI -f "$ROOT/syn/common/steps.tcl" -log log/genus.log
+fi
+
+# -- GUI run (--gui without -i): open the GUI and run the whole flow in it, then stay open --
+# The GUI window shows the log and the design while the steps run; afterwards the session stays open
+# for inspection (schematic, timing paths, reports). Run folder: runs/work (same as -i)
+if [ "$GUI" = 1 ]; then
+    mkdir -p "$SYN_DIR/runs/work/log" && cd "$SYN_DIR/runs/work" || exit 1
+    export SYN_BATCH=0 FLOW_SCRIPT="$SYN_DIR/genus.tcl"
+    printf 'source %s\nsource %s\n' "$ROOT/syn/common/steps.tcl" "$SYN_DIR/genus.tcl" > gui_run.tcl
+    echo "Genus GUI run, folder: $PWD, target $TARGET_PERIOD ns -> synthesis $SYN_PERIOD ns (x $SYN_MARGIN)"
+    echo "  the whole flow runs in the GUI; Genus stays open at the end (type exit to close)"
+    exec genus -gui -f gui_run.tcl -log log/genus.log
 fi
 
 # -- Batch --

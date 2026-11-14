@@ -56,7 +56,7 @@ setenv GPDK045_DIR <GPDK045 폴더의 절대 경로>
 - `<GPDK045 폴더>` = 그 아래에 `digital/gsclib045_all_v4.4/`가 있는 폴더
 - 매번 치기 번거로우면 `~/.cshrc`에 같은 줄을 넣는다
 
-같은 `genus.tcl`을 두 방식으로 쓴다. 스크립트는 `STEP 0`~`STEP 8` 블록으로 나뉘어 있다.
+같은 `genus.tcl`을 세 방식(일괄, 대화형, GUI)으로 쓴다. 스크립트는 `STEP 0`~`STEP 8` 블록으로 나뉘어 있다.
 
 | STEP | 내용 | 끝나고 볼 것 (대화형) |
 |:---:|------|------|
@@ -95,6 +95,18 @@ bash syn/ch05_single_cycle/run_syn.sh -i
 
 - 결과 폴더(`runs/`)는 커밋하지 않는다
 - LEF·QRC 없이 돌리려면 csh에서 `env USE_PHYS=0 bash syn/ch05_single_cycle/run_syn.sh`
+
+**(C) GUI로 진행 과정 보기** (2026-11-14 추가) — Genus GUI 창을 띄워 합성이 진행되는 것을 보면서
+```bash
+bash syn/ch05_single_cycle/run_syn.sh --gui
+```
+- GUI 창이 열리고 STEP 0~8이 그 안에서 자동으로 실행된다. 창의 로그에 단계별 진행(`syn_generic` → `syn_map` → `syn_opt`)이 나오고, 끝나도 Genus가 열려 있어 회로도·타이밍 경로·리포트를 GUI에서 볼 수 있다 (닫기: 프롬프트에 `exit`)
+- 단계마다 직접 진행하면서 GUI로 보려면 `-i --gui` (프롬프트에서 `step 0` … `step 8`)
+- 목표 주기는 일괄과 같이 마지막 인자: `--gui 9`
+- 결과 폴더는 `runs/work/` (대화형과 같음)
+- **X 화면이 필요하다**: MobaXterm으로 접속하면 X11 전달이 기본으로 켜져 있다. `DISPLAY`가 비어 있으면 스크립트가 오류로 멈춘다 (`echo $DISPLAY`로 확인)
+- 이 Genus 버전이 `-gui` 옵션을 받지 않으면 `-i`로 띄운 뒤 프롬프트에 `gui_show`
+- 원격 GUI는 화면 전송 때문에 일괄보다 느릴 수 있다. 결과 수치는 일괄과 같다 (같은 `genus.tcl`)
 
 ### 작업물 정리 (처음부터 다시)
 이 폴더에서:
