@@ -13,17 +13,18 @@
 #   T_MEM      : memory read time outside the chip (same assumption as the core SDC: 1.0)
 #   T_WB_PIN   : data at the chip pin -> register file input  (core T_WB 1.2 + input pad)
 #   T_WSU      : DMEM write setup at the chip pins
-#   The pad allowances (2.0 ns out, 1.0 ns in) are first guesses from the pad model (A -> PAD 1.4 ns at
-#   the slow corner without load); the timing reports show the real pad delays - adjust them then.
+#   Values from the 12 ns synthesis reports (2026-11-16): output pad PADDO A->PAD 1.18 ns with the 5 pF
+#   board load, input pad PADDI PAD->Y 0.62 ns; pc flop -> IMEM_ADDR pin needed 1.93 ns, data pin ->
+#   register file needed about 2.24 ns. First guesses were 2.5 / 2.2 (pad allowances 2.0 out, 1.0 in).
 #####################################################################
 
 set T_MEM  1.0
 set T_WSU  0.3
 if {![info exists T_ADDR_PIN]} {
-    set T_ADDR_PIN [expr {[info exists ::env(T_ADDR_PIN)] ? $::env(T_ADDR_PIN) : 2.5}]
+    set T_ADDR_PIN [expr {[info exists ::env(T_ADDR_PIN)] ? $::env(T_ADDR_PIN) : 2.0}]
 }
 if {![info exists T_WB_PIN]} {
-    set T_WB_PIN [expr {[info exists ::env(T_WB_PIN)] ? $::env(T_WB_PIN) : 2.2}]
+    set T_WB_PIN [expr {[info exists ::env(T_WB_PIN)] ? $::env(T_WB_PIN) : 2.3}]
 }
 # board side of the pins
 set PAD_LOAD   5.0      ;# load on every output pin (library capacitance unit, pF expected)

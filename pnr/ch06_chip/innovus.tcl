@@ -32,7 +32,7 @@ if {![info exists ::env(GPDK045_DIR)]} {
     error "environment variable GPDK045_DIR is not set (csh: setenv GPDK045_DIR <GPDK045 folder>)"
 }
 if {![info exists TARGET_PERIOD]} {
-    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 12}]
+    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 13}]
 }
 set TOP_DESIGN rv32i_chip
 if {![info exists NETLIST]} {
@@ -160,6 +160,8 @@ saveDesign dbs/03_power
 
 set_db place_global_cong_effort high
 place_design
+# tie cells for the constant inputs (synthesis does not use TIE cells: syn/common/dont_use.tcl)
+addTieHiLo -cell {TIEHI TIELO} -prefix TIE
 checkPlace report/04_checkPlace.rpt
 place_opt_design
 earlyGlobalRoute

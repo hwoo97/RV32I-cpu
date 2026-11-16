@@ -5,7 +5,7 @@
 # Synthesis is over-constrained to SYN_MARGIN x target (default 0.8 -> 8 ns target = 6.4 ns synthesis).
 #
 # Batch (runs the whole flow, quits, prints an area / slack summary):
-#   bash syn/ch06_chip/run_syn.sh            # target 12 ns -> synthesis 9.6 ns
+#   bash syn/ch06_chip/run_syn.sh            # target 13 ns -> synthesis 10.4 ns
 #   bash syn/ch06_chip/run_syn.sh 5          # target 5 ns  -> synthesis 4 ns
 #   -> run folder: syn/ch06_chip/runs/t<target>ns/
 #   other margin (csh): env SYN_MARGIN=0.7 bash syn/ch06_chip/run_syn.sh 10
@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
         *)     break ;;
     esac
 done
-TARGET_PERIOD="${1:-12}"
+TARGET_PERIOD="${1:-13}"
 SYN_MARGIN="${SYN_MARGIN:-0.8}"
 SYN_PERIOD="$(awk -v t="$TARGET_PERIOD" -v m="$SYN_MARGIN" 'BEGIN { printf "%g", t * m }')"
 

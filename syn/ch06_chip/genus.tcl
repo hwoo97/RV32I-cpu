@@ -6,7 +6,7 @@
 #  with the module hierarchy kept (per-module area in report_area)
 #
 # Two ways to run (same script):
-#  (A) Batch:       bash syn/ch06_chip/run_syn.sh [target period ns]   (default 12 ns, see README)
+#  (A) Batch:       bash syn/ch06_chip/run_syn.sh [target period ns]   (default 13 ns, see README)
 #                   -> synthesizes at 0.8 x target, runs in runs/t<target>ns/, quits, prints a summary
 #  (B) Interactive: bash syn/ch06_chip/run_syn.sh -i [target period ns]
 #                   -> opens Genus in runs/work/ with the step runner loaded. Then either
@@ -37,12 +37,12 @@ if {[info exists ::env(SYN_DIR)]} {
 set ROOT [file normalize $SYN_DIR/../..]
 # Clock: synthesize at SYN_MARGIN x TARGET_PERIOD (over-constrain, default 80 %) so that PnR,
 # which adds real wire delay and clock skew, can still meet TARGET_PERIOD.
-#   TARGET_PERIOD : clock period the chip must meet (used by PnR)       default 12 ns (chip pins, see README)
+#   TARGET_PERIOD : clock period the chip must meet (used by PnR)       default 13 ns (chip pins, see README)
 #   SYN_MARGIN    : synthesis period / target period                    default 0.8
 #   CLK_PERIOD    : period actually used in the SDC during synthesis = TARGET_PERIOD x SYN_MARGIN
 # Values set at the prompt before this step are kept, else env (run_syn.sh), else defaults.
 if {![info exists TARGET_PERIOD]} {
-    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 12.0}]
+    set TARGET_PERIOD [expr {[info exists ::env(TARGET_PERIOD)] ? $::env(TARGET_PERIOD) : 13.0}]
 }
 if {![info exists SYN_MARGIN]} {
     set SYN_MARGIN [expr {[info exists ::env(SYN_MARGIN)] ? $::env(SYN_MARGIN) : 0.8}]
@@ -77,6 +77,7 @@ set_db syn_opt_effort     high
 
 set USE_PADS 1                         ;# also the giolib045 pad library and LEF
 source $ROOT/syn/common/gpdk045.tcl   ;# read_libs (+ LEF, QRC)
+source $ROOT/syn/common/dont_use.tcl  ;# cells synthesis must not use (latches, scan, tie, delay, ...)
 
 set_db init_hdl_search_path $RTL_DIR  ;# `include "rv32i_defs.vh" / "mcu_memmap.vh" found here
 set_db hdl_array_naming_style %s_%d

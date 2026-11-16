@@ -3,10 +3,10 @@
 #
 # The argument is the TARGET clock period; the chip netlist comes from the synthesis run of the
 # same target: syn/ch06_chip/runs/t<target>ns/mapped/rv32i_chip_syn_final.v (run run_syn.sh first),
-# or set NETLIST (csh: env NETLIST=<file> bash pnr/ch06_chip/run_pnr.sh 12)
+# or set NETLIST (csh: env NETLIST=<file> bash pnr/ch06_chip/run_pnr.sh 13)
 #
 # Batch (no window, whole flow, quits, prints a summary):
-#   bash pnr/ch06_chip/run_pnr.sh                 # target 12 ns
+#   bash pnr/ch06_chip/run_pnr.sh                 # target 13 ns
 #   bash pnr/ch06_chip/run_pnr.sh 14
 #   -> run folder: pnr/ch06_chip/runs/t<target>ns/
 # GUI (needs an X display: MobaXterm with X11 forwarding):
@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
         *)     break ;;
     esac
 done
-TARGET_PERIOD="${1:-12}"
+TARGET_PERIOD="${1:-13}"
 
 if [ -z "$GPDK045_DIR" ]; then
     echo "ERROR: GPDK045_DIR is not set -> in csh: setenv GPDK045_DIR <GPDK045 folder>, then run again"

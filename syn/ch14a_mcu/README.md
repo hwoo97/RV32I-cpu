@@ -91,6 +91,7 @@ bash syn/ch14a_mcu/run_syn.sh --gui
 | 2026-11-12 | 8 ns | 6.4 ns | 36,464.4 | 48,087.5 | 9,206 | **−0.043** | 624줄 | **`T_WB` 1.2** 일괄. 불만족. 경로 종류별: imem→reg −1, mem→reg −2, apbx→reg −34, imem→addr −43, reg→reg +441, reg→imem_addr +16, mem_write +595 ps. 위반하는 동안 Genus가 셀을 키워 면적 급증(regfile 20,213.9, alu 8,027.1) |
 | 2026-11-12 | 8.5 ns | 6.8 ns | 28,528.6 | 38,308.4 | 7,508 | **−0.003** | 217줄 | **`T_WB` 1.2** 일괄. 위반은 시뮬레이션 전용 외부 APB 슬롯(apbx→reg −3)뿐, 칩 경로는 모두 만족: imem→reg 0, mem→reg +2, imem→addr 0, reg→reg +857, reg→imem_addr +24, mem_write +731 ps |
 | 2026-11-12 | **8.5 ns** | 6.8 ns | **23,973.5** | 32,906.3 | 6,491 | **0.000** | **0** | `T_WB` 1.2, 슬롯 15·`apbx_*` 제거 후. **만족 → MCU 목표 8.5 ns**. 경로 종류별: imem→reg 0, mem→reg 0, imem→addr 0, reg→reg +856, reg→imem_addr +32, reg→mem_out +1,525, mem_write +699 ps |
+| | 8.5 ns | 6.8 ns | (미실행) | | | | | **dont_use 적용** (2026-11-16) |
 
 **3단계 코어와 비교 — 같은 조건 (목표 8.5 ns, 합성 6.8 ns, `T_WB` 1.2, 둘 다 위반 0, 셀 면적 µm²)**
 

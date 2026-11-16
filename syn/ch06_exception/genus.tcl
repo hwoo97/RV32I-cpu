@@ -75,6 +75,7 @@ set_db syn_map_effort     high
 set_db syn_opt_effort     high
 
 source $ROOT/syn/common/gpdk045.tcl   ;# read_libs (+ LEF, QRC)
+source $ROOT/syn/common/dont_use.tcl  ;# cells synthesis must not use (latches, scan, tie, delay, ...)
 
 set_db init_hdl_search_path $RTL_DIR  ;# `include "rv32i_defs.vh" / "mcu_memmap.vh" found here
 set_db hdl_array_naming_style %s_%d

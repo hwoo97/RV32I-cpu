@@ -18,6 +18,8 @@ proc flatten_sdc {in out args} {
         # one argument as SDC text: a query stays as it is, anything with a space or [ ] is braced
         proc _arg {a} {
             if {[string index $a 0] eq "\["} { return $a }
+            # numbers from expr: round away float noise (8.100000000000001 -> 8.1)
+            if {[string is double -strict $a] && [string first . $a] >= 0} { return [format %.6g $a] }
             if {[regexp {[ \[\]]} $a]} { return "{$a}" }
             return $a
         }
