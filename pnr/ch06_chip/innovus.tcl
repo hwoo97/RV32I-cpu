@@ -208,37 +208,38 @@ set_propagated_clock [get_clocks clk]
 set_clock_latency -source 0 [get_clocks clk]
 
 # Virtual clock vclk (memory read round trip, syn/ch06_chip/cons/rv32i_chip.sdc): its latency = the
-# average clock arrival at the flops, per view (slow for setup, fast for hold). Measured here, or given
-# by hand with VCLK_LAT_SLOW / VCLK_LAT_FAST (e.g. the Avg ID of report/05_skew_groups.rpt).
-proc avg_clock_arrival {view prop} {
-    set sum 0.0
-    set n 0
-    foreach_in_collection p [all_registers -clock_pins] {
-        set a [get_property $p $prop -view $view]
-        if {[string is double -strict $a]} {
-            set sum [expr {$sum + $a}]
-            incr n
+# average clock insertion delay (Avg ID) of the skew group report, per corner: dc_slow:setup.late for
+# the setup view, dc_fast:hold.early for the hold view. Or given by hand: set VCLK_LAT_SLOW / VCLK_LAT_FAST
+# (prompt or environment). (First version used get_property -view, which this Innovus rejected.)
+report_ccopt_clock_trees  -file report/05_clock_trees.rpt
+report_ccopt_skew_groups  -file report/05_skew_groups.rpt
+proc skew_group_avg_id {rpt corner} {
+    # summary line: <corner> <skew group> <ID target> <Min ID> <Max ID> <Avg ID> ...
+    set fh [open $rpt r]
+    set lines [split [read $fh] "\n"]
+    close $fh
+    foreach l $lines {
+        set f [regexp -all -inline {\S+} $l]
+        if {[lindex $f 0] eq $corner && [llength $f] > 5 && [string is double -strict [lindex $f 5]]} {
+            return [lindex $f 5]
         }
     }
-    if {$n == 0} { error "avg_clock_arrival: no clock pin arrival in $view (set VCLK_LAT_SLOW / VCLK_LAT_FAST)" }
-    return [expr {round($sum / $n * 1000) / 1000.0}]
+    error "skew_group_avg_id: no '$corner' line in $rpt (set VCLK_LAT_SLOW / VCLK_LAT_FAST by hand)"
 }
-foreach {mode view prop var} {FUNC_S view_slow arrival_max_rise VCLK_LAT_SLOW
-                               FUNC_F view_fast arrival_min_rise VCLK_LAT_FAST} {
+foreach {mode view corner var} {FUNC_S view_slow dc_slow:setup.late VCLK_LAT_SLOW
+                                FUNC_F view_fast dc_fast:hold.early VCLK_LAT_FAST} {
     if {[info exists $var]} {
         set lat [set $var]
     } elseif {[info exists ::env($var)]} {
         set lat $::env($var)
     } else {
-        set lat [avg_clock_arrival $view $prop]
+        set lat [skew_group_avg_id report/05_skew_groups.rpt $corner]
     }
     set_interactive_constraint_modes [list $mode]
     set_clock_latency -source $lat [get_clocks vclk]
     puts "vclk latency ($mode, $view) = $lat ns"
 }
 set_interactive_constraint_modes [all_constraint_modes -active]
-report_ccopt_clock_trees  -file report/05_clock_trees.rpt
-report_ccopt_skew_groups  -file report/05_skew_groups.rpt
 optDesign -postCTS
 optDesign -postCTS -hold
 timeDesign -postCTS       -outDir report/timing/postCTS
