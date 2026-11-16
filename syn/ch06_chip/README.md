@@ -39,4 +39,4 @@ bash syn/ch06_chip/run_syn.sh
 | 날짜 | 목표 주기 | 합성 주기 | 셀 면적 (µm², 패드 포함) | 코어 `u_mcu` 면적 | WNS (ns) | 위반 | 비고 |
 |------|----------:|----------:|------:|------:|------:|:---:|------|
 | 2026-11-16 | 12 ns | 9.6 ns | 2,871,358.8 | 34,547.8 | **−1.043** | 1,304줄 | 불만족. 최악 `in_imem_to_addr`(명령어 핀 → 데이터 주소 핀, 입력·출력 패드 각 1). 종류별: imem→reg −131, mem→reg −39, imem→addr −1,043, reg→reg +3,313, reg→imem_addr +575, reg→mem_out +2,872, mem_write +37 ps. 셀 면적의 98.8 %가 패드 |
-| | 13 ns | 10.4 ns | (미실행) | | | | `T_ADDR_PIN` 2.0, `T_WB_PIN` 2.3, **dont_use 적용** |
+| 2026-11-16 | **13 ns** | 10.4 ns | 2,867,342.7 | **30,531.7** | **0.000** | **0** | `T_ADDR_PIN` 2.0, `T_WB_PIN` 2.3, dont_use. **만족 → PnR 입력**. 패드 2,836,810.9(197개 + GPIO 인버터). 종류별 imem→reg 0, mem→reg +1, imem→addr 0, reg→reg +3,592, reg→imem_addr +329, reg→mem_out +3,552, mem_write +942 ps |
