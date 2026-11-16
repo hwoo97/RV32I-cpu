@@ -35,7 +35,7 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 2 | `floorPlan` (다이 3700 µm, 코어 여백 380 µm), 패드 배치, IO 채움 셀 | 패드 링이 끊김 없이 이어졌는지 |
 | 3 | 전원망: 전역 연결, 코어 링, 전원 패드 연결, 셀 레일, 세로·가로 스트라이프, DRC·연결 검사 | `report/03_power.*` |
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
-| 5 | CTS (`ccopt_design`, 목표 스큐 0.05 ns), 전파 클럭, `optDesign -postCTS` (+hold) | `report/05_*`, 클럭 트리 표시 |
+| 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
 | 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
 | 7 | 채움 셀, DRC, 연결 검사, RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
 | 8 | 넷리스트(게이트 시뮬·LEC용, 전원 패드 제외), SDF(slow·fast), SDC, DEF, GDS | `out/` |
@@ -45,7 +45,15 @@ bash pnr/ch06_chip/run_pnr.sh 12
 - IO 파일의 변별 순서 방향(위·아래 변은 왼쪽→오른쪽, 좌·우 변은 아래→위로 예상)을 STEP 2 뒤 GUI로 확인
 - 전원 패드의 핀 이름이 `VDD`/`VSS`인지(`globalNetConnect`), IO 링 전원(`VDDIOR` 등) 연결이 필요한지 STEP 3 연결 검사로 확인
 
+## 클럭 트리와 가상 클럭 (1차 실행 뒤 수정, 2026-11-16)
+- 1차: CCOpt 기본값으로 서쪽 클럭 패드에서 코어 가운데까지 약 1.8 mm를 작은 버퍼 약 35단으로 이어 삽입 지연 4.1 ns(slow)·1.1 ns(fast). 자동 IO 지연 보정(`update_io_latency`)이 hold 검사 한쪽에만 들어가 **hold −1.134 ns, 2216 경로 위반**
+- 수정 1: 클럭 셀 CLKBUFX8~20·CLKINVX8~20, trunk Metal7-8, `target_max_trans 0.2`, `update_io_latency false` → 삽입 지연 0.62~0.76 ns(slow)·0.22~0.29 ns(fast), postCTS hold 위반 1개(−0.000), reg2reg setup +4.312
+- 그 결과 IMEM_ADDR 12비트가 setup −0.699: 주소는 클럭 지연만큼 늦게 나가는데 핀 제약의 기준(보드 클럭)은 그대로라서. 메모리 읽기는 주소가 나가고 데이터가 돌아오는 **한 사이클 왕복**이라, 받는 플립플롭도 같은 만큼 늦게 클럭을 받아 실제로는 상쇄된다
+- 수정 2: 메모리 읽기 왕복 핀(IMEM_ADDR·IMEM_DATA·DADDR·RAM_RDATA·IROM_DATA)을 가상 클럭 `vclk` 기준으로 두고, CTS 뒤 `vclk` 지연을 측정한 평균 삽입 지연으로 맞춘다. 합성·CTS 전에는 0(이상적 클럭과 같음). slow·fast 값이 달라 MMMC 모드를 뷰마다 하나씩(`FUNC_S`, `FUNC_F`) 둔다. DMEM 쓰기·GPIO·UART·상태 출력은 보드 클럭 기준 `clk` 그대로
+- 측정이 안 되면 `VCLK_LAT_SLOW`·`VCLK_LAT_FAST`(환경 변수 또는 프롬프트 `set`)로 `report/05_skew_groups.rpt`의 Avg ID를 직접 준다
+
 ## 결과
 | 날짜 | 목표 주기 | setup WNS | hold WNS | DRC | 연결 | 셀 면적 | 비고 |
 |------|----------:|----------:|---------:|:---:|:---:|------:|------|
-| | 12 ns | (미실행) | | | | | |
+| 2026-11-16 | 13 ns | −0.005 | **−1.134** | 확인 중 | 확인 중 | | 1차, 클럭 트리 문제 (위 절) |
+| 2026-11-16 | 13 ns | −0.699 (postCTS, IMEM_ADDR) | −0.000 (postCTS) | | | | 클럭 수정 1 뒤, 가상 클럭 전 |

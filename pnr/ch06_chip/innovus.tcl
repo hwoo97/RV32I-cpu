@@ -174,11 +174,69 @@ saveDesign dbs/04_place
 ## STEP 5. Clock tree synthesis and optimization
 ####################################################################
 
+# The clock pad is on the west edge, about 1.8 mm from the logic in the middle of the core.
+# First run (2026-11-16) with the CCOpt defaults: a chain of ~35 small buffers (BUFX2, CLKBUFX3/4)
+# every ~50 um -> insertion delay 4.1 ns slow / 1.1 ns fast, and CCOpt's IO latency update put a
+# source latency of minus that delay on one side of the reg2reg checks -> hold -1.13 ns on 2216 paths.
+#  - strong clock buffers / inverters only, a looser transition target -> fewer, larger repeaters
+#  - trunk on Metal7-8 (less RC than the low layers), leaves on Metal3-5
+#  - no IO latency update: the board clock edge at the CLK pin is time 0 for every path, so IO paths
+#    see the real insertion delay (as the chip would)
+set CTS_BUFS {}
+foreach c {CLKBUFX8 CLKBUFX12 CLKBUFX16 CLKBUFX20} {
+    if {[dbGet -e head.libCells.name $c] ne ""} { lappend CTS_BUFS $c }
+}
+set CTS_INVS {}
+foreach c {CLKINVX8 CLKINVX12 CLKINVX16 CLKINVX20} {
+    if {[dbGet -e head.libCells.name $c] ne ""} { lappend CTS_INVS $c }
+}
+puts "CTS buffers: $CTS_BUFS   inverters: $CTS_INVS"
+create_route_type -name clk_trunk -top_preferred_layer Metal8 -bottom_preferred_layer Metal7
+create_route_type -name clk_leaf  -top_preferred_layer Metal5 -bottom_preferred_layer Metal3
+set_ccopt_property route_type clk_trunk -net_type trunk
+set_ccopt_property route_type clk_leaf  -net_type leaf
+set_ccopt_property buffer_cells   $CTS_BUFS
+set_ccopt_property inverter_cells $CTS_INVS
+set_ccopt_property target_max_trans 0.2
 set_ccopt_property target_skew 0.05
+set_ccopt_property update_io_latency false
 create_ccopt_clock_tree_spec
 ccopt_design
 set_interactive_constraint_modes [all_constraint_modes -active]
-set_propagated_clock [all_clocks]
+set_propagated_clock [get_clocks clk]
+# no source latency on the board clock (removes anything left from an earlier run)
+set_clock_latency -source 0 [get_clocks clk]
+
+# Virtual clock vclk (memory read round trip, syn/ch06_chip/cons/rv32i_chip.sdc): its latency = the
+# average clock arrival at the flops, per view (slow for setup, fast for hold). Measured here, or given
+# by hand with VCLK_LAT_SLOW / VCLK_LAT_FAST (e.g. the Avg ID of report/05_skew_groups.rpt).
+proc avg_clock_arrival {view prop} {
+    set sum 0.0
+    set n 0
+    foreach_in_collection p [all_registers -clock_pins] {
+        set a [get_property $p $prop -view $view]
+        if {[string is double -strict $a]} {
+            set sum [expr {$sum + $a}]
+            incr n
+        }
+    }
+    if {$n == 0} { error "avg_clock_arrival: no clock pin arrival in $view (set VCLK_LAT_SLOW / VCLK_LAT_FAST)" }
+    return [expr {round($sum / $n * 1000) / 1000.0}]
+}
+foreach {mode view prop var} {FUNC_S view_slow arrival_max_rise VCLK_LAT_SLOW
+                               FUNC_F view_fast arrival_min_rise VCLK_LAT_FAST} {
+    if {[info exists $var]} {
+        set lat [set $var]
+    } elseif {[info exists ::env($var)]} {
+        set lat $::env($var)
+    } else {
+        set lat [avg_clock_arrival $view $prop]
+    }
+    set_interactive_constraint_modes [list $mode]
+    set_clock_latency -source $lat [get_clocks vclk]
+    puts "vclk latency ($mode, $view) = $lat ns"
+}
+set_interactive_constraint_modes [all_constraint_modes -active]
 report_ccopt_clock_trees  -file report/05_clock_trees.rpt
 report_ccopt_skew_groups  -file report/05_skew_groups.rpt
 optDesign -postCTS

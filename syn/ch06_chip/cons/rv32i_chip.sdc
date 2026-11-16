@@ -16,6 +16,14 @@
 #   Values from the 12 ns synthesis reports (2026-11-16): output pad PADDO A->PAD 1.18 ns with the 5 pF
 #   board load, input pad PADDI PAD->Y 0.62 ns; pc flop -> IMEM_ADDR pin needed 1.93 ns, data pin ->
 #   register file needed about 2.24 ns. First guesses were 2.5 / 2.2 (pad allowances 2.0 out, 1.0 in).
+#
+#  Virtual clock vclk (2026-11-16, after the first PnR): the memory READ round trip (address out, data
+#  back in, same cycle, asynchronous memory) is split at the pins only for budgeting. Its pin delays are
+#  referenced to vclk, whose latency follows the clock arrival at the chip flops:
+#    synthesis and PnR before CTS: ideal clock -> VCLK_LATENCY 0 (same as clk)
+#    PnR after CTS: innovus.tcl sets the measured average insertion delay per analysis view
+#  So an address that leaves late (clock tree delay) also has its data captured late, as on the board.
+#  DMEM writes (RAM_WSTRB / RAM_WDATA) are taken by the memory at the board clock edge -> stay on clk.
 #####################################################################
 
 set T_MEM  1.0
@@ -34,16 +42,23 @@ set T_IO_FRAC  0.5      ;# GPIO / UART outputs: half a cycle for the board
 create_clock -name clk -period $CLK_PERIOD [get_ports CLK]
 set_clock_uncertainty 0.1 [get_clocks clk]
 set_clock_transition  0.05 [get_clocks clk]
+# virtual clock for the memory read round trip (no port, timing reference only)
+if {![info exists VCLK_LATENCY]} {
+    set VCLK_LATENCY [expr {[info exists ::env(VCLK_LATENCY)] ? $::env(VCLK_LATENCY) : 0.0}]
+}
+create_clock -name vclk -period $CLK_PERIOD
+set_clock_uncertainty 0.1 [get_clocks vclk]
+set_clock_latency -source $VCLK_LATENCY [get_clocks vclk]
 
-# Instruction fetch: address at the pin within T_ADDR_PIN, the instruction arrives T_MEM later
-set_output_delay [expr {$CLK_PERIOD - $T_ADDR_PIN}]  -clock clk [get_ports {IMEM_ADDR[*]}]
-set_input_delay  [expr {$T_ADDR_PIN + $T_MEM}]       -clock clk [get_ports {IMEM_DATA[*]}]
+# Instruction fetch (vclk): address at the pin within T_ADDR_PIN, the instruction arrives T_MEM later
+set_output_delay [expr {$CLK_PERIOD - $T_ADDR_PIN}]  -clock vclk [get_ports {IMEM_ADDR[*]}]
+set_input_delay  [expr {$T_ADDR_PIN + $T_MEM}]       -clock vclk [get_ports {IMEM_DATA[*]}]
 
-# Data reads (DMEM and the IMEM data-side port share DADDR): T_MEM + T_WB_PIN must remain
-set_output_delay [expr {$T_MEM + $T_WB_PIN}]         -clock clk [get_ports {DADDR[*]}]
-set_input_delay  [expr {$CLK_PERIOD - $T_WB_PIN}]    -clock clk [get_ports {RAM_RDATA[*] IROM_DATA[*]}]
+# Data reads (vclk; DMEM and the IMEM data-side port share DADDR): T_MEM + T_WB_PIN must remain
+set_output_delay [expr {$T_MEM + $T_WB_PIN}]         -clock vclk [get_ports {DADDR[*]}]
+set_input_delay  [expr {$CLK_PERIOD - $T_WB_PIN}]    -clock vclk [get_ports {RAM_RDATA[*] IROM_DATA[*]}]
 
-# DMEM write: ready T_WSU before the next edge
+# DMEM write (clk, board edge): ready T_WSU before the next edge
 set_output_delay $T_WSU                              -clock clk [get_ports {RAM_WSTRB[*] RAM_WDATA[*]}]
 
 # GPIO (bidirectional, asynchronous inputs through the GPIO synchronizer), UART TX: board budget
