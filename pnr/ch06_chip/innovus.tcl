@@ -122,15 +122,19 @@ addRing -nets {VDD VSS} -type core_rings -follow core \
 #  So: pads -> outer ring (short wires) -> stripes -> inner ring -> rails.
 #  Pad inner edge = PAD_DEPTH from the die edge; the outer ring starts OUTER_GAP um inside it.
 set PAD_DEPTH  240
-set OUTER_GAP  10
-set RING_W     15       ;# VDD 5 + spacing 5 + VSS 5
+set OUTER_GAP  40       ;# 10 um left no room for pad pin access: 95 signal shorts with pad blockages
 set OUTER_EDGE [expr {$PAD_DEPTH + $OUTER_GAP}]
-set OUTER_OFF  [expr {$CORE_MARGIN - $OUTER_EDGE - $RING_W}]
-addRing -nets {VDD VSS} -type core_rings -follow core \
+# '-follow io': the ring follows the inner edge of the IO ring, OUTER_GAP um inside it. A second
+# '-follow core' ring with a large offset was not created (2026-11-17 GUI: stripes ended in the air)
+addRing -nets {VDD VSS} -type core_rings -follow io \
     -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
     -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
-    -offset [list top $OUTER_OFF bottom $OUTER_OFF left $OUTER_OFF right $OUTER_OFF] \
+    -offset [list top $OUTER_GAP bottom $OUTER_GAP left $OUTER_GAP right $OUTER_GAP] \
     -center 0 -threshold 0 -jog_distance 0 -snap_wire_center_to_grid None
+# stop here if the outer ring is missing (stripes would end dangling)
+set n_ring [llength [dbGet -e top.nets.sWires.shape ring]]
+puts "ring wires after the outer ring: $n_ring (inner ring alone = 8)"
+if {$n_ring <= 8} { error "outer ring was not created - check the addRing messages above" }
 
 # connect the core power pads (PADVDD / PADVSS) to the nearest ring = the outer ring
 #  (the log warns IMPSR-1256 'no CORE class pad pin': the pad pins are AREAIO class, found and used)
