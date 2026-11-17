@@ -91,6 +91,86 @@ saveDesign dbs/01_init
 # die size and core box (small core in the middle, empty space up to the pads for the power rings);
 # the pads go around the die edge in the order of rv32i_chip.io
 floorPlan -site CoreSite -d $DIE $DIE $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN
+
+# Move the core power pads into the pad ring.
+#  PADVDD / PADVSS are AREAIO class in the IO LEF used here, so the IO file does not put them in the ring:
+#  the tool placed them along the inside of the core box (2026-11-18: P_E_VDD at x 1870..2110 with the
+#  core at 1590..2110 - rows cut, core box reset). Their slots in the ring are left empty, so each one
+#  goes to its slot: evenly between the ring pads before and after it in the IO file order, same edge
+#  and orientation as those pads. Earlier runs had the same fault (rails cut at x = 1246.8).
+proc io_side_order {iofile} {
+    set order [dict create]
+    set side ""
+    set fh [open $iofile r]
+    foreach l [split [read $fh] "\n"] {
+        if {[regexp {^\s*\((top|right|bottom|left)\s*$} $l -> s]} { set side $s; continue }
+        if {[regexp {^\s*\((topleft|topright|bottomleft|bottomright)} $l]} { set side ""; continue }
+        if {$side ne "" && [regexp {inst name="([^"]+)"} $l -> n]} { dict lappend order $side $n }
+    }
+    close $fh
+    return $order
+}
+proc inst_box {name} {
+    set p [dbGet -e -p top.insts.name $name]
+    if {$p eq "" || $p eq "0x0"} { error "instance $name not found" }
+    return [concat {*}[dbGet $p.box]]
+}
+proc in_pad_ring {name} {
+    global DIE
+    lassign [inst_box $name] x1 y1 x2 y2
+    return [expr {$x1 < 1 || $y1 < 1 || $x2 > $DIE - 1 || $y2 > $DIE - 1}]
+}
+proc place_pads_in_ring {iofile} {
+    set moved 0
+    dict for {side names} [io_side_order $iofile] {
+        set axis [expr {$side eq "top" || $side eq "bottom" ? 0 : 1}]
+        set n [llength $names]
+        set i 0
+        while {$i < $n} {
+            if {[in_pad_ring [lindex $names $i]]} { incr i; continue }
+            # run i..j of pads outside the ring, between ring pads i-1 and j+1
+            set j $i
+            while {$j + 1 < $n && ![in_pad_ring [lindex $names [expr {$j + 1}]]]} { incr j }
+            if {$i == 0 || $j == $n - 1} { error "pad [lindex $names $i] ($side) has no ring pad on both sides" }
+            set prev [lindex $names [expr {$i - 1}]]
+            set next [lindex $names [expr {$j + 1}]]
+            set pb [inst_box $prev]
+            set a0 [lindex $pb $axis]
+            set a1 [lindex [inst_box $next] $axis]
+            set k [expr {$j - $i + 1}]
+            set orient [dbGet [dbGet -p top.insts.name $prev].orient]
+            for {set m 0} {$m < $k} {incr m} {
+                set name [lindex $names [expr {$i + $m}]]
+                set pos [expr {$a0 + ($m + 1) * ($a1 - $a0) / ($k + 1.0)}]
+                if {$axis == 0} {
+                    placeInstance $name $pos [lindex $pb 1] $orient -fixed
+                } else {
+                    placeInstance $name [lindex $pb 0] $pos $orient -fixed
+                }
+                puts "pad moved into the ring: $name ($side) [inst_box $name] $orient"
+                incr moved
+            }
+            set i [expr {$j + 1}]
+        }
+    }
+    return $moved
+}
+set n_moved [place_pads_in_ring $PNR_DIR/rv32i_chip.io]
+puts "pads moved into the ring: $n_moved"
+# floorplan again with every pad in the ring: rows and core box back to the full CORE_MARGIN box
+floorPlan -site CoreSite -d $DIE $DIE $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN
+# checks: every pad of the IO file in the ring, core box close to the requested one
+dict for {side names} [io_side_order $PNR_DIR/rv32i_chip.io] {
+    foreach nm $names {
+        if {![in_pad_ring $nm]} { error "pad $nm ($side) is not in the pad ring: [inst_box $nm]" }
+    }
+}
+lassign [concat {*}[dbGet top.fPlan.coreBox]] cx1 cy1 cx2 cy2
+puts "core box = $cx1 $cy1 $cx2 $cy2 (requested [expr {$DIE - 2 * $CORE_MARGIN}] um square at $CORE_MARGIN)"
+if {abs($cx1 - $CORE_MARGIN) > 5 || abs($cx2 - ($DIE - $CORE_MARGIN)) > 5 ||
+    abs($cy1 - $CORE_MARGIN) > 5 || abs($cy2 - ($DIE - $CORE_MARGIN)) > 5} {
+    error "core box $cx1 $cy1 $cx2 $cy2 is not the requested one - a pad or block still cuts the rows"
+}
 # fill the gaps between pads so the IO ring is continuous
 foreach side {n s w e} {
     addIoFiller -cell {padIORINGFEED60 padIORINGFEED10 padIORINGFEED5 padIORINGFEED3 padIORINGFEED1} \
