@@ -33,12 +33,12 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 0 | 경로·변수, SDC 펼치기 (`pnr.sdc`, 주기 = 목표) | |
 | 1 | `init_design` (넷리스트, LEF 3개, MMMC, IO 파일), `checkDesign` | `report/checkDesign` |
 | 2 | `floorPlan` (다이 3700 µm, 코어 여백 380 µm), 패드 배치, IO 채움 셀 | 패드 링이 끊김 없이 이어졌는지 |
-| 3 | 전원망: 전역 연결, 코어 링, 전원 패드 연결(목표 = 링), 패드 링(모서리 셀), 셀 레일, 세로·가로 스트라이프, DRC·연결 검사 | `report/03_power.*` |
+| 3 | 전원망: 전역 연결, 코어 링, 전원 패드 연결(목표 = 링), 셀 레일, 세로·가로 스트라이프, DRC·연결 검사 | `report/03_power.*` |
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
 | 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
 | 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
 | 7 | 채움 셀, DRC, 연결 검사, RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
-| 8 | 넷리스트(게이트 시뮬·LEC용, 계층 유지, 전원 패드 포함), SDF(slow·fast), SDC, DEF, GDS | `out/` |
+| 8 | 넷리스트(게이트 시뮬·LEC용, 평탄화, 전원 패드 제외), SDF(slow·fast), SDC, DEF, GDS | `out/` |
 
 ## 확인할 점 (서버에서 처음 실행할 때)
 - 처음 쓰는 스크립트라 Innovus 명령 옵션이 버전에 따라 다를 수 있다. 오류가 나면 그 STEP만 `-i --gui`로 다시 실행하며 고친다

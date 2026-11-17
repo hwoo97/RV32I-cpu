@@ -123,8 +123,9 @@ sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
     -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
     -crossoverViaLayerRange {Metal1(1) Metal11(11)} -nets {VDD VSS} -allowLayerChange 1 \
     -targetViaLayerRange {Metal1(1) Metal11(11)}
-# VDD / VSS of the pad ring itself (corner cells, IO fillers: IMPVFC-96 terminals on CORNER_*)
-sroute -connect {padRing} -nets {VDD VSS}
+# No 'sroute -connect padRing': the pad ring (pads, IO fillers, corners) is connected by abutment
+# inside the cells. Tried 2026-11-17: its wires shorted with the Metal4 blockages of CORNER_* and
+# PAD_IROM_DATA_0 (8 DRC shorts). The 8 IMPVFC-96 terminals on CORNER_* are checked in the GUI instead.
 
 # standard cell power rails
 sroute -connect {corePin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
@@ -295,11 +296,11 @@ saveDesign dbs/07_finish
 ## STEP 8. Write out (netlist for gate-level simulation and LEC, SDF, SDC, DEF, GDS)
 ####################################################################
 
-# netlist for gate-level simulation and LEC: module hierarchy kept (as the synthesis netlist, easier
-# LEC mapping); the power pads stay in it (no ports; the simulation has stubs, sim pad_power.v).
-# File name first: the earlier '-flat -excludeCellInst {...} <file>' form failed with IMPTCM-46.
-saveNetlist out/${TOP_DESIGN}_pnr.v
-# netlist with every physical instance (fillers, corners) for LVS-like checks
+# flat netlist without the power pads (they have no logical ports) - gate-level simulation and LEC,
+# same form as the earlier lab flow
+saveNetlist -flat -excludeCellInst {PADVDD PADVSS PADVDDIOR PADVSSIOR} out/${TOP_DESIGN}_pnr.v
+# netlist with every physical instance (fillers, corners) for LVS-like checks.
+# (-includePhysicalCell takes a cell list and swallowed the file name: IMPTCM-46 on 2026-11-17)
 saveNetlist out/${TOP_DESIGN}_pnr_phys.v -includePhysicalInst
 write_sdf -view view_slow out/${TOP_DESIGN}_slow.sdf
 write_sdf -view view_fast out/${TOP_DESIGN}_fast.sdf
