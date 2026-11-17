@@ -44,9 +44,14 @@ if {![file exists $NETLIST]} {
 }
 
 # Floorplan: pad-limited chip (03_chapters/ch06_exception/chip.md sec. 3)
-#  die DIE x DIE um; core box CORE_MARGIN um inside the die edge (240 um pads + room for the power rings)
+#  die DIE x DIE um (set by the pad count); core box CORE_MARGIN um inside the die edge.
+#  The logic is about 35,000 um^2: a 1000 um core is ~3.5 % used and leaves room for buffers.
+#  (Before 2026-11-17 the core filled the pad ring, 2940 um, 0.4 % used.)
 set DIE         3700
-set CORE_MARGIN 380
+set CORE_MARGIN 1350
+# power plan (STEP 3): pad depth, gap between the IO ring and the outer power ring
+set PAD_DEPTH   240
+set OUTER_GAP   40      ;# 10 um left no room for pad pin access: 95 signal shorts with pad blockages
 
 set G       $::env(GPDK045_DIR)/digital
 set LEF_FILES [list \
@@ -83,7 +88,8 @@ saveDesign dbs/01_init
 ## STEP 2. Floorplan, IO pads, IO fillers
 ####################################################################
 
-# die size and core box; the pads go around the core in the order of rv32i_chip.io
+# die size and core box (small core in the middle, empty space up to the pads for the power rings);
+# the pads go around the die edge in the order of rv32i_chip.io
 floorPlan -site CoreSite -d $DIE $DIE $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN
 # fill the gaps between pads so the IO ring is continuous
 foreach side {n s w e} {
@@ -94,9 +100,12 @@ timeDesign -prePlace -outDir report/timing/prePlace
 saveDesign dbs/02_floorplan
 
 ####################################################################
-## STEP 3. Power plan (ring, rails, stripes, pad connection)
+## STEP 3. Power plan (inner ring, rails, core stripes, outer ring, pad connection, ring stripes)
 ####################################################################
+#  Power path: board -> power pads -> outer ring -> ring-to-ring stripes -> inner ring / core stripes
+#  -> Metal1 rails -> cell pins. Order below: 3-1 .. 3-7, then checks.
 
+## 3-1. global net connection (power pins and tie cells -> VDD / VSS)
 globalNetConnect VDD -type pgpin -pin VDD -instanceBasename *
 globalNetConnect VSS -type pgpin -pin VSS -instanceBasename *
 globalNetConnect VDD -type tiehi -instanceBasename *
@@ -104,55 +113,10 @@ globalNetConnect VSS -type tielo -instanceBasename *
 setTieHiLoMode -reset
 setTieHiLoMode -cell {TIELO TIEHI} -honorDontTouch false -createHierPort false
 
-# core ring around the core box
 setAddRingMode -ring_target default -extend_over_row 0 -ignore_rows 0 -avoid_short 0 \
     -skip_crossing_trunks none -stacked_via_top_layer Metal11 -stacked_via_bottom_layer Metal1 \
     -via_using_exact_crossover_size 1 -orthogonal_only true -skip_via_on_pin {standardcell} \
     -skip_via_on_wire_shape {noshape}
-addRing -nets {VDD VSS} -type core_rings -follow core \
-    -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
-    -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
-    -offset {top 5 bottom 5 left 5 right 5} -center 0 -threshold 0 -jog_distance 0 \
-    -snap_wire_center_to_grid None
-
-# outer ring next to the IO pads (two-ring power plan)
-#  The inner ring sits 120 um away from the pads. With one ring, 'sroute padPin' did not reach it:
-#  the pad wires ran on into the core (P_N_VDD at x = 1246.8 cut the Metal1 rails of the top rows)
-#  or ended dangling (30 IMPVFC-94), and the whole core grid was one open piece (2026-11-17).
-#  So: pads -> outer ring (short wires) -> stripes -> inner ring -> rails.
-#  Pad inner edge = PAD_DEPTH from the die edge; the outer ring starts OUTER_GAP um inside it.
-set PAD_DEPTH  240
-set OUTER_GAP  40       ;# 10 um left no room for pad pin access: 95 signal shorts with pad blockages
-set OUTER_EDGE [expr {$PAD_DEPTH + $OUTER_GAP}]
-# '-follow io': the ring follows the inner edge of the IO ring, OUTER_GAP um inside it. A second
-# '-follow core' ring with a large offset was not created (2026-11-17 GUI: stripes ended in the air)
-addRing -nets {VDD VSS} -type core_rings -follow io \
-    -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
-    -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
-    -offset [list top $OUTER_GAP bottom $OUTER_GAP left $OUTER_GAP right $OUTER_GAP] \
-    -center 0 -threshold 0 -jog_distance 0 -snap_wire_center_to_grid None
-# stop here if the outer ring is missing (stripes would end dangling)
-set n_ring [llength [dbGet -e top.nets.sWires.shape ring]]
-puts "ring wires after the outer ring: $n_ring (inner ring alone = 8)"
-if {$n_ring <= 8} { error "outer ring was not created - check the addRing messages above" }
-
-# connect the core power pads (PADVDD / PADVSS) to the nearest ring = the outer ring
-#  (the log warns IMPSR-1256 'no CORE class pad pin': the pad pins are AREAIO class, found and used)
-setSrouteMode -viaConnectToShape {noshape}
-sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
-    -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
-    -crossoverViaLayerRange {Metal1(1) Metal11(11)} -nets {VDD VSS} -allowLayerChange 1 \
-    -targetViaLayerRange {Metal1(1) Metal11(11)}
-# No 'sroute -connect padRing': the pad ring (pads, IO fillers, corners) is connected by abutment
-# inside the cells. Tried 2026-11-17: its wires shorted with the Metal4 blockages of CORNER_* and
-# PAD_IROM_DATA_0 (8 DRC shorts). The 8 IMPVFC-96 terminals on CORNER_* are checked in the GUI instead.
-
-# standard cell power rails
-sroute -connect {corePin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
-    -corePinTarget {firstAfterRowEnd} -allowJogging 1 -crossoverViaLayerRange {Metal1(1) Metal11(11)} \
-    -nets {VDD VSS} -allowLayerChange 1 -targetViaLayerRange {Metal1(1) Metal11(11)}
-
-# vertical and horizontal stripes over the core
 setAddStripeMode -ignore_block_check false -break_at none -route_over_rows_only false \
     -rows_without_stripes_only false -extend_to_closest_target none -stop_at_last_wire_for_area false \
     -partial_set_thru_domain false -ignore_nondefault_domains false -trim_antenna_back_to_shape none \
@@ -160,22 +124,65 @@ setAddStripeMode -ignore_block_check false -break_at none -route_over_rows_only 
     -stacked_via_top_layer Metal11 -stacked_via_bottom_layer Metal1 -via_using_exact_crossover_size false \
     -split_vias false -orthogonal_only true -allow_jog {padcore_ring block_ring} \
     -skip_via_on_pin {standardcell} -skip_via_on_wire_shape {noshape}
-# stripe area = up to the outer edge of the outer ring, so every stripe crosses both rings and joins
-# them. Offsets keep the stripes over the core (first one 50 um inside the core edge, as before) and
-# away from the parallel ring sides on the same layer.
-set STRIPE_BOX  [list $OUTER_EDGE $OUTER_EDGE [expr {$DIE - $OUTER_EDGE}] [expr {$DIE - $OUTER_EDGE}]]
-set STRIPE_OFF  [expr {$CORE_MARGIN - $OUTER_EDGE + 50}]
-addStripe -nets {VDD VSS} -layer Metal10 -direction vertical -width 5 -spacing 5 -area $STRIPE_BOX \
-    -set_to_set_distance 100 -start_from left -start_offset $STRIPE_OFF -stop_offset $STRIPE_OFF \
+# common stripe options: VDD / VSS pair, 5 um wide, 5 um apart, one pair every 100 um
+set STRIPE_OPTS {-nets {VDD VSS} -width 5 -spacing 5 -set_to_set_distance 100 \
     -switch_layer_over_obs false -max_same_layer_jog_length 2 -padcore_ring_top_layer_limit Metal11 \
     -padcore_ring_bottom_layer_limit Metal1 -block_ring_top_layer_limit Metal11 \
-    -block_ring_bottom_layer_limit Metal1 -use_wire_group 0 -snap_wire_center_to_grid None
-addStripe -nets {VDD VSS} -layer Metal11 -direction horizontal -width 5 -spacing 5 -area $STRIPE_BOX \
-    -set_to_set_distance 100 -start_from bottom -start_offset $STRIPE_OFF -stop_offset $STRIPE_OFF \
-    -switch_layer_over_obs false -max_same_layer_jog_length 2 -padcore_ring_top_layer_limit Metal11 \
-    -padcore_ring_bottom_layer_limit Metal1 -block_ring_top_layer_limit Metal11 \
-    -block_ring_bottom_layer_limit Metal1 -use_wire_group 0 -snap_wire_center_to_grid None
+    -block_ring_bottom_layer_limit Metal1 -use_wire_group 0 -snap_wire_center_to_grid None}
 
+## 3-2. inner ring: around the core box, 5 um away (top / bottom Metal11, left / right Metal10)
+addRing -nets {VDD VSS} -type core_rings -follow core \
+    -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
+    -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
+    -offset {top 5 bottom 5 left 5 right 5} -center 0 -threshold 0 -jog_distance 0 \
+    -snap_wire_center_to_grid None
+
+## 3-3. standard cell power rails (Metal1 along the rows, joined to the inner ring)
+sroute -connect {corePin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
+    -corePinTarget {firstAfterRowEnd} -allowJogging 1 -crossoverViaLayerRange {Metal1(1) Metal11(11)} \
+    -nets {VDD VSS} -allowLayerChange 1 -targetViaLayerRange {Metal1(1) Metal11(11)}
+
+## 3-4. core stripes: over the core only (no -area = core box, ends on the inner ring),
+##      first pair 10 um inside the core edge, vertical Metal10 then horizontal Metal11
+eval addStripe $STRIPE_OPTS -layer Metal10 -direction vertical   -start_from left   -start_offset 10 -stop_offset 0
+eval addStripe $STRIPE_OPTS -layer Metal11 -direction horizontal -start_from bottom -start_offset 10 -stop_offset 0
+
+## 3-5. outer ring: along the inner edge of the IO ring, OUTER_GAP um inside it ('-follow io').
+##      The inner ring is far from the pads (core box in the middle), so the pads connect here instead.
+##      (A second '-follow core' ring with a large offset was not created: stripes ended in the air)
+set OUTER_EDGE [expr {$PAD_DEPTH + $OUTER_GAP}]
+addRing -nets {VDD VSS} -type core_rings -follow io \
+    -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
+    -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
+    -offset [list top $OUTER_GAP bottom $OUTER_GAP left $OUTER_GAP right $OUTER_GAP] \
+    -center 0 -threshold 0 -jog_distance 0 -snap_wire_center_to_grid None
+set n_ring [llength [dbGet -e top.nets.sWires.shape ring]]
+puts "ring wires after the outer ring: $n_ring (inner ring alone = 8)"
+if {$n_ring <= 8} { error "outer ring was not created - check the addRing messages above" }
+
+## 3-6. power pads (PADVDD / PADVSS) -> nearest ring = the outer ring
+##      (IMPSR-1256 'no CORE class pad pin' is expected: the pad pins are AREAIO class, found and used)
+setSrouteMode -viaConnectToShape {noshape}
+sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
+    -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
+    -crossoverViaLayerRange {Metal1(1) Metal11(11)} -nets {VDD VSS} -allowLayerChange 1 \
+    -targetViaLayerRange {Metal1(1) Metal11(11)}
+# No 'sroute -connect padRing': the pad ring (pads, IO fillers, corners) is connected by abutment
+# inside the cells. Tried 2026-11-17: its wires shorted with the Metal4 blockages of CORNER_* and
+# PAD_IROM_DATA_0 (8 DRC shorts). The pad ring bus pieces and the 8 IMPVFC-96 terminals on CORNER_*
+# stay in the connectivity report (abutment inside the pad cells is not modeled as wires).
+
+## 3-7. ring-to-ring stripes: area = outer ring box, so each stripe runs from the outer ring across
+##      the inner ring and the core to the other side of the outer ring and joins the two rings.
+##      x / y range kept over the core, first pair 50 um inside the core edge (between the 3-4 pairs)
+set RING_BOX [list $OUTER_EDGE $OUTER_EDGE [expr {$DIE - $OUTER_EDGE}] [expr {$DIE - $OUTER_EDGE}]]
+set RING_OFF [expr {$CORE_MARGIN - $OUTER_EDGE + 50}]
+eval addStripe $STRIPE_OPTS -area [list $RING_BOX] -layer Metal10 -direction vertical \
+    -start_from left -start_offset $RING_OFF -stop_offset $RING_OFF
+eval addStripe $STRIPE_OPTS -area [list $RING_BOX] -layer Metal11 -direction horizontal \
+    -start_from bottom -start_offset $RING_OFF -stop_offset $RING_OFF
+
+## checks: DRC, connectivity, and power grid opens
 set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only default -check_same_via_cell true \
     -exclude_pg_net false -ignore_trial_route false -ignore_cell_blockage false \
     -use_min_spacing_on_block_obs auto -report report/03_power.drc.rpt -limit 1000

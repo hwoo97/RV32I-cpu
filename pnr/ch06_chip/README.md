@@ -32,8 +32,8 @@ bash pnr/ch06_chip/run_pnr.sh 12
 |:---:|------|------|
 | 0 | 경로·변수, SDC 펼치기 (`pnr.sdc`, 주기 = 목표) | |
 | 1 | `init_design` (넷리스트, LEF 3개, MMMC, IO 파일), `checkDesign` | `report/checkDesign` |
-| 2 | `floorPlan` (다이 3700 µm, 코어 여백 380 µm), 패드 배치, IO 채움 셀 | 패드 링이 끊김 없이 이어졌는지 |
-| 3 | 전원망: 전역 연결, 안쪽 코어 링 + 패드 옆 바깥 링, 전원 패드 → 바깥 링, 셀 레일, 두 링을 잇는 세로·가로 스트라이프, DRC·연결 검사(전원 끊김 포함) | `report/03_power.*` (`03_power.open.rpt` = VDD/VSS 끊김) |
+| 2 | `floorPlan` (다이 3700 µm, 코어 1000 µm 사방을 가운데에, 코어 여백 1350 µm), 패드 배치, IO 채움 셀 | 패드 링이 끊김 없이 이어졌는지, 코어와 패드 사이 빈 공간 |
+| 3 | 전원망 (3-1 ~ 3-7): 전역 연결 → 안쪽 링(코어 둘레) → 셀 레일 → 코어 스트라이프 → 바깥 링(IO 링 40 µm 안쪽) → 전원 패드 → 바깥 링 → 두 링을 잇는 스트라이프, DRC·연결 검사(전원 끊김 포함) | `report/03_power.*` (`03_power.open.rpt` = VDD/VSS 끊김), 콘솔 `ring wires after the outer ring` |
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
 | 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
 | 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
