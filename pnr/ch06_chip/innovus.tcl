@@ -115,9 +115,25 @@ addRing -nets {VDD VSS} -type core_rings -follow core \
     -offset {top 5 bottom 5 left 5 right 5} -center 0 -threshold 0 -jog_distance 0 \
     -snap_wire_center_to_grid None
 
-# connect the core power pads (PADVDD / PADVSS) to the ring
-#  target = the core ring only. First runs used nearestTarget: a pad wire went on past the ring into
-#  the core and cut the Metal1 rails of 140 rows at x = 1246.8 .. 1250 (IMPVFC-92 opens on VDD / VSS)
+# outer ring next to the IO pads (two-ring power plan)
+#  The inner ring sits 120 um away from the pads. With one ring, 'sroute padPin' did not reach it:
+#  the pad wires ran on into the core (P_N_VDD at x = 1246.8 cut the Metal1 rails of the top rows)
+#  or ended dangling (30 IMPVFC-94), and the whole core grid was one open piece (2026-11-17).
+#  So: pads -> outer ring (short wires) -> stripes -> inner ring -> rails.
+#  Pad inner edge = PAD_DEPTH from the die edge; the outer ring starts OUTER_GAP um inside it.
+set PAD_DEPTH  240
+set OUTER_GAP  10
+set RING_W     15       ;# VDD 5 + spacing 5 + VSS 5
+set OUTER_EDGE [expr {$PAD_DEPTH + $OUTER_GAP}]
+set OUTER_OFF  [expr {$CORE_MARGIN - $OUTER_EDGE - $RING_W}]
+addRing -nets {VDD VSS} -type core_rings -follow core \
+    -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
+    -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
+    -offset [list top $OUTER_OFF bottom $OUTER_OFF left $OUTER_OFF right $OUTER_OFF] \
+    -center 0 -threshold 0 -jog_distance 0 -snap_wire_center_to_grid None
+
+# connect the core power pads (PADVDD / PADVSS) to the nearest ring = the outer ring
+#  (the log warns IMPSR-1256 'no CORE class pad pin': the pad pins are AREAIO class, found and used)
 setSrouteMode -viaConnectToShape {noshape}
 sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
     -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
@@ -140,13 +156,18 @@ setAddStripeMode -ignore_block_check false -break_at none -route_over_rows_only 
     -stacked_via_top_layer Metal11 -stacked_via_bottom_layer Metal1 -via_using_exact_crossover_size false \
     -split_vias false -orthogonal_only true -allow_jog {padcore_ring block_ring} \
     -skip_via_on_pin {standardcell} -skip_via_on_wire_shape {noshape}
-addStripe -nets {VDD VSS} -layer Metal10 -direction vertical -width 5 -spacing 5 \
-    -set_to_set_distance 100 -start_from left -start_offset 50 -stop_offset 0 \
+# stripe area = up to the outer edge of the outer ring, so every stripe crosses both rings and joins
+# them. Offsets keep the stripes over the core (first one 50 um inside the core edge, as before) and
+# away from the parallel ring sides on the same layer.
+set STRIPE_BOX  [list $OUTER_EDGE $OUTER_EDGE [expr {$DIE - $OUTER_EDGE}] [expr {$DIE - $OUTER_EDGE}]]
+set STRIPE_OFF  [expr {$CORE_MARGIN - $OUTER_EDGE + 50}]
+addStripe -nets {VDD VSS} -layer Metal10 -direction vertical -width 5 -spacing 5 -area $STRIPE_BOX \
+    -set_to_set_distance 100 -start_from left -start_offset $STRIPE_OFF -stop_offset $STRIPE_OFF \
     -switch_layer_over_obs false -max_same_layer_jog_length 2 -padcore_ring_top_layer_limit Metal11 \
     -padcore_ring_bottom_layer_limit Metal1 -block_ring_top_layer_limit Metal11 \
     -block_ring_bottom_layer_limit Metal1 -use_wire_group 0 -snap_wire_center_to_grid None
-addStripe -nets {VDD VSS} -layer Metal11 -direction horizontal -width 5 -spacing 5 \
-    -set_to_set_distance 100 -start_from bottom -start_offset 50 -stop_offset 0 \
+addStripe -nets {VDD VSS} -layer Metal11 -direction horizontal -width 5 -spacing 5 -area $STRIPE_BOX \
+    -set_to_set_distance 100 -start_from bottom -start_offset $STRIPE_OFF -stop_offset $STRIPE_OFF \
     -switch_layer_over_obs false -max_same_layer_jog_length 2 -padcore_ring_top_layer_limit Metal11 \
     -padcore_ring_bottom_layer_limit Metal1 -block_ring_top_layer_limit Metal11 \
     -block_ring_bottom_layer_limit Metal1 -use_wire_group 0 -snap_wire_center_to_grid None
@@ -157,6 +178,10 @@ set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only defaul
 verify_drc
 verifyConnectivity -type all -noOpen -noAntenna -noWeakConnect -noUnConnPin -noUnroutedNet \
     -error 1000 -warning 50 -report report/03_power.conn.rpt
+# power grid opens: the check above uses -noOpen and hides them. A clean grid here (before placement)
+# avoids finding VDD / VSS opens only at STEP 7 after a full route run.
+verifyConnectivity -nets {VDD VSS} -type special -geomConnect -noAntenna -error 1000 -warning 50 \
+    -report report/03_power.open.rpt
 saveDesign dbs/03_power
 
 ####################################################################
@@ -269,6 +294,9 @@ routeDesign -globalDetail
 setAnalysisMode -analysisType onChipVariation
 setDelayCalMode -SIAware false
 optDesign -postRoute -drv
+# setup margin for the post-route steps (hold fix, fillers, final SI timing). 2026-11-17 final had
+# -0.012 on RAM_RDATA[9] -> regfile (31 paths): the optimizer stops at slack 0 and the hold fix ate it.
+setOptMode -setupTargetSlack 0.05
 optDesign -postRoute
 optDesign -postRoute -hold
 timeDesign -postRoute       -outDir report/timing/postRoute
