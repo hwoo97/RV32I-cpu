@@ -116,11 +116,15 @@ addRing -nets {VDD VSS} -type core_rings -follow core \
     -snap_wire_center_to_grid None
 
 # connect the core power pads (PADVDD / PADVSS) to the ring
+#  target = the core ring only. First runs used nearestTarget: a pad wire went on past the ring into
+#  the core and cut the Metal1 rails of 140 rows at x = 1246.8 .. 1250 (IMPVFC-92 opens on VDD / VSS)
 setSrouteMode -viaConnectToShape {noshape}
-sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
-    -padPinPortConnect {allPort oneGeom} -padPinTarget {nearestTarget} -allowJogging 1 \
+sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
+    -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
     -crossoverViaLayerRange {Metal1(1) Metal11(11)} -nets {VDD VSS} -allowLayerChange 1 \
     -targetViaLayerRange {Metal1(1) Metal11(11)}
+# VDD / VSS of the pad ring itself (corner cells, IO fillers: IMPVFC-96 terminals on CORNER_*)
+sroute -connect {padRing} -nets {VDD VSS}
 
 # standard cell power rails
 sroute -connect {corePin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
@@ -241,6 +245,8 @@ foreach {mode view corner var} {FUNC_S view_slow dc_slow:setup.late VCLK_LAT_SLO
 }
 set_interactive_constraint_modes [all_constraint_modes -active]
 optDesign -postCTS
+# small hold target margin: the first runs ended at -0.000 ns on one path
+setOptMode -holdTargetSlack 0.02
 optDesign -postCTS -hold
 timeDesign -postCTS       -outDir report/timing/postCTS
 timeDesign -postCTS -hold -outDir report/timing/postCTS_hold
@@ -289,10 +295,12 @@ saveDesign dbs/07_finish
 ## STEP 8. Write out (netlist for gate-level simulation and LEC, SDF, SDC, DEF, GDS)
 ####################################################################
 
-# flat netlist without the power pads (they have no logical ports)
-saveNetlist -flat -excludeCellInst {PADVDD PADVSS PADVDDIOR PADVSSIOR} out/${TOP_DESIGN}_pnr.v
-# netlist with every physical cell (fillers, corners) for LVS-like checks
-saveNetlist -flat -includePhysicalCell out/${TOP_DESIGN}_pnr_phys.v
+# netlist for gate-level simulation and LEC: module hierarchy kept (as the synthesis netlist, easier
+# LEC mapping); the power pads stay in it (no ports; the simulation has stubs, sim pad_power.v).
+# File name first: the earlier '-flat -excludeCellInst {...} <file>' form failed with IMPTCM-46.
+saveNetlist out/${TOP_DESIGN}_pnr.v
+# netlist with every physical instance (fillers, corners) for LVS-like checks
+saveNetlist out/${TOP_DESIGN}_pnr_phys.v -includePhysicalInst
 write_sdf -view view_slow out/${TOP_DESIGN}_slow.sdf
 write_sdf -view view_fast out/${TOP_DESIGN}_fast.sdf
 writeTimingCon out/${TOP_DESIGN}_pnr.sdc
