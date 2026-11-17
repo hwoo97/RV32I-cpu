@@ -124,6 +124,56 @@ setAddStripeMode -ignore_block_check false -break_at none -route_over_rows_only 
     -stacked_via_top_layer Metal11 -stacked_via_bottom_layer Metal1 -via_using_exact_crossover_size false \
     -split_vias false -orthogonal_only true -allow_jog {padcore_ring block_ring} \
     -skip_via_on_pin {standardcell} -skip_via_on_wire_shape {noshape}
+# Check after every sub-step (3-2 .. 3-7), so a break is found at the step that made it:
+#  power opens (VDD / VSS, geometric), DRC count and special wire counts per shape, one line each in
+#  the log ("PGCHECK ...") and in report/03_pgcheck.txt
+proc pg_check {tag} {
+    set rpt report/03_${tag}.open.rpt
+    verifyConnectivity -nets {VDD VSS} -type special -geomConnect -noAntenna -error 1000 -warning 50 \
+        -report $rpt
+    set probs {}
+    set fh [open $rpt r]
+    foreach l [split [read $fh] "\n"] {
+        if {[regexp {(\d+) Problem\(s\) \((IMPVFC-\d+)\)} $l -> n code]} { lappend probs "$code=$n" }
+    }
+    close $fh
+    set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only default \
+        -check_same_via_cell true -exclude_pg_net false -ignore_trial_route false \
+        -ignore_cell_blockage false -use_min_spacing_on_block_obs auto \
+        -report report/03_${tag}.drc.rpt -limit 1000
+    verify_drc
+    set ndrc 0
+    set fh [open report/03_${tag}.drc.rpt r]
+    regexp {Total Violations\s*:\s*(\d+)} [read $fh] -> ndrc
+    close $fh
+    set shapes {}
+    foreach s {ring padring stripe followpin iowire corewire} {
+        set n [llength [dbGet -e top.nets.sWires.shape $s]]
+        if {$n} { lappend shapes "$s=$n" }
+    }
+    if {![llength $probs]} { set probs {no-opens} }
+    set line "PGCHECK $tag : opens [join $probs { }] | DRC $ndrc | sWires [join $shapes { }]"
+    puts $line
+    set fh [open report/03_pgcheck.txt a]
+    puts $fh $line
+    close $fh
+}
+# bounding box of all ring wires {x1 y1 x2 y2} (measured from the database, not assumed)
+proc ring_bbox {} {
+    set nums [concat {*}[dbGet -e [dbGet -e -p top.nets.sWires.shape ring].box]]
+    if {[llength $nums] < 4} { error "no ring wires found" }
+    set x1 1e9; set y1 1e9; set x2 -1e9; set y2 -1e9
+    foreach {a b c d} $nums {
+        set x1 [expr {min($x1,$a)}]; set y1 [expr {min($y1,$b)}]
+        set x2 [expr {max($x2,$c)}]; set y2 [expr {max($y2,$d)}]
+    }
+    return [list $x1 $y1 $x2 $y2]
+}
+file delete -force report/03_pgcheck.txt
+# real core box after floorPlan snapped it to the site grid
+lassign [concat {*}[dbGet top.fPlan.coreBox]] CX1 CY1 CX2 CY2
+puts "core box = $CX1 $CY1 $CX2 $CY2"
+
 # common stripe options: VDD / VSS pair, 5 um wide, 5 um apart, one pair every 100 um
 set STRIPE_OPTS {-nets {VDD VSS} -width 5 -spacing 5 -set_to_set_distance 100 \
     -switch_layer_over_obs false -max_same_layer_jog_length 2 -padcore_ring_top_layer_limit Metal11 \
@@ -136,21 +186,30 @@ addRing -nets {VDD VSS} -type core_rings -follow core \
     -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
     -offset {top 5 bottom 5 left 5 right 5} -center 0 -threshold 0 -jog_distance 0 \
     -snap_wire_center_to_grid None
+set INNER_BOX [ring_bbox]
+puts "inner ring box = $INNER_BOX"
+pg_check 3-2_inner_ring
 
 ## 3-3. standard cell power rails (Metal1 along the rows, joined to the inner ring)
 sroute -connect {corePin} -layerChangeRange {Metal1(1) Metal11(11)} -blockPinTarget {nearestTarget} \
     -corePinTarget {firstAfterRowEnd} -allowJogging 1 -crossoverViaLayerRange {Metal1(1) Metal11(11)} \
     -nets {VDD VSS} -allowLayerChange 1 -targetViaLayerRange {Metal1(1) Metal11(11)}
+pg_check 3-3_rails
 
-## 3-4. core stripes: over the core only (no -area = core box, ends on the inner ring),
-##      first pair 10 um inside the core edge, vertical Metal10 then horizontal Metal11
-eval addStripe $STRIPE_OPTS -layer Metal10 -direction vertical   -start_from left   -start_offset 10 -stop_offset 0
-eval addStripe $STRIPE_OPTS -layer Metal11 -direction horizontal -start_from bottom -start_offset 10 -stop_offset 0
+## 3-4. core stripes: area = the inner ring box, so each stripe ends on the inner ring (vias there).
+##      (Without -area the stripes covered the core box only and may stop short of the ring.)
+##      First pair 10 um inside the core edge; the same margin at the far side keeps the last pair off
+##      the parallel ring side on the same layer. Vertical Metal10, then horizontal Metal11.
+lassign $INNER_BOX IX1 IY1 IX2 IY2
+eval addStripe $STRIPE_OPTS -area [list $INNER_BOX] -layer Metal10 -direction vertical \
+    -start_from left -start_offset [expr {$CX1 - $IX1 + 10}] -stop_offset [expr {$IX2 - $CX2 + 10}]
+eval addStripe $STRIPE_OPTS -area [list $INNER_BOX] -layer Metal11 -direction horizontal \
+    -start_from bottom -start_offset [expr {$CY1 - $IY1 + 10}] -stop_offset [expr {$IY2 - $CY2 + 10}]
+pg_check 3-4_core_stripes
 
 ## 3-5. outer ring: along the inner edge of the IO ring, OUTER_GAP um inside it ('-follow io').
 ##      The inner ring is far from the pads (core box in the middle), so the pads connect here instead.
 ##      (A second '-follow core' ring with a large offset was not created: stripes ended in the air)
-set OUTER_EDGE [expr {$PAD_DEPTH + $OUTER_GAP}]
 addRing -nets {VDD VSS} -type core_rings -follow io \
     -layer {top Metal11 bottom Metal11 left Metal10 right Metal10} \
     -width {top 5 bottom 5 left 5 right 5} -spacing {top 5 bottom 5 left 5 right 5} \
@@ -159,6 +218,10 @@ addRing -nets {VDD VSS} -type core_rings -follow io \
 set n_ring [llength [dbGet -e top.nets.sWires.shape ring]]
 puts "ring wires after the outer ring: $n_ring (inner ring alone = 8)"
 if {$n_ring <= 8} { error "outer ring was not created - check the addRing messages above" }
+set OUTER_BOX [ring_bbox]
+puts "outer ring box = $OUTER_BOX (expected about [expr {$PAD_DEPTH + $OUTER_GAP}] from the die edge)"
+if {[lindex $OUTER_BOX 0] >= $IX1} { error "outer ring box is not outside the inner ring" }
+pg_check 3-5_outer_ring
 
 ## 3-6. power pads (PADVDD / PADVSS) -> nearest ring = the outer ring
 ##      (IMPSR-1256 'no CORE class pad pin' is expected: the pad pins are AREAIO class, found and used)
@@ -167,6 +230,7 @@ sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
     -padPinPortConnect {allPort oneGeom} -padPinTarget {ring} -allowJogging 1 \
     -crossoverViaLayerRange {Metal1(1) Metal11(11)} -nets {VDD VSS} -allowLayerChange 1 \
     -targetViaLayerRange {Metal1(1) Metal11(11)}
+pg_check 3-6_pad_wires
 # No 'sroute -connect padRing': the pad ring (pads, IO fillers, corners) is connected by abutment
 # inside the cells. Tried 2026-11-17: its wires shorted with the Metal4 blockages of CORNER_* and
 # PAD_IROM_DATA_0 (8 DRC shorts). The pad ring bus pieces and the 8 IMPVFC-96 terminals on CORNER_*
@@ -175,12 +239,12 @@ sroute -connect {padPin} -layerChangeRange {Metal1(1) Metal11(11)} \
 ## 3-7. ring-to-ring stripes: area = outer ring box, so each stripe runs from the outer ring across
 ##      the inner ring and the core to the other side of the outer ring and joins the two rings.
 ##      x / y range kept over the core, first pair 50 um inside the core edge (between the 3-4 pairs)
-set RING_BOX [list $OUTER_EDGE $OUTER_EDGE [expr {$DIE - $OUTER_EDGE}] [expr {$DIE - $OUTER_EDGE}]]
-set RING_OFF [expr {$CORE_MARGIN - $OUTER_EDGE + 50}]
-eval addStripe $STRIPE_OPTS -area [list $RING_BOX] -layer Metal10 -direction vertical \
-    -start_from left -start_offset $RING_OFF -stop_offset $RING_OFF
-eval addStripe $STRIPE_OPTS -area [list $RING_BOX] -layer Metal11 -direction horizontal \
-    -start_from bottom -start_offset $RING_OFF -stop_offset $RING_OFF
+lassign $OUTER_BOX OX1 OY1 OX2 OY2
+eval addStripe $STRIPE_OPTS -area [list $OUTER_BOX] -layer Metal10 -direction vertical \
+    -start_from left -start_offset [expr {$CX1 - $OX1 + 50}] -stop_offset [expr {$OX2 - $CX2 + 50}]
+eval addStripe $STRIPE_OPTS -area [list $OUTER_BOX] -layer Metal11 -direction horizontal \
+    -start_from bottom -start_offset [expr {$CY1 - $OY1 + 50}] -stop_offset [expr {$OY2 - $CY2 + 50}]
+pg_check 3-7_ring_stripes
 
 ## checks: DRC, connectivity, and power grid opens
 set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only default -check_same_via_cell true \
