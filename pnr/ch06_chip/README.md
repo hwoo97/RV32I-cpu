@@ -32,11 +32,11 @@ bash pnr/ch06_chip/run_pnr.sh 12
 |:---:|------|------|
 | 0 | 경로·변수, SDC 펼치기 (`pnr.sdc`, 주기 = 목표) | |
 | 1 | `init_design` (넷리스트, LEF 3개, MMMC, IO 파일), `checkDesign` | `report/checkDesign` |
-| 2 | `floorPlan` (다이 3700 µm, 코어 1000 µm 사방을 가운데에, 목표 코어 여백 1350 µm), 패드 배치, 코어 전원 패드(AREAIO)를 링의 빈 자리로 옮김 → 행(row) 다시 만들기, IO 채움 셀. 수정 IO LEF(AREAIO)에서는 floorPlan이 코어를 패드 깊이(240 µm)만큼 줄여 잡으므로 여백을 1350 − 240 = 1110으로 요청한다 (미검증) | 콘솔 `floorPlan core margin`, `core box after floorPlan`, `pad moved into the ring` 8줄, `core box` = 1350 ~ 2350, 패드 링이 끊김 없이 이어졌는지 |
+| 2 | `floorPlan` (다이 3700 µm, 코어 1400 µm 사방을 가운데에, 목표 코어 여백 1150 µm, 환경 변수 `CORE_MARGIN`으로 바꿀 수 있음), 패드 배치, 코어 전원 패드(AREAIO)를 링의 빈 자리로 옮김 → 행(row) 다시 만들기, IO 채움 셀. 수정 IO LEF(AREAIO)에서는 floorPlan이 코어를 패드 깊이(240 µm)만큼 줄여 잡으므로 여백을 1150 − 240 = 910으로 요청한다 (2026-11-18 코어 1000 µm에서 확인) | 콘솔 `floorPlan core margin`, `core box after floorPlan`, `pad moved into the ring` 8줄, `core box` = 1150 ~ 2550, 패드 링이 끊김 없이 이어졌는지 |
 | 3 | 전원망 (3-1 ~ 3-8): 전역 연결 → 안쪽 링(코어 둘레) → 셀 레일 → 코어 스트라이프 → 바깥 링(IO 링 40 µm 안쪽) → 전원 패드 → 바깥 링 → 두 링을 잇는 스트라이프 → 남는 스트라이프 끝 자르기(`editTrim`), 하위 단계마다 전원 끊김·DRC 검사 | `report/03_pgcheck.txt` (하위 단계별 한 줄: 끊김 종류별 개수, DRC 수, 전원선 종류별 개수), `report/03_<하위단계>.open.rpt`, 콘솔 `core box` / `inner ring box` / `outer ring box` |
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
 | 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
-| 6 | 패드↔코어 신호 넷을 Metal7-8 우선으로 지정(코어까지 약 1.1 mm, 아래층이면 전이 시간 초과), 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
+| 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
 | 7 | 채움 셀, DRC, 연결 검사, RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
 | 8 | 넷리스트(게이트 시뮬·LEC용, 평탄화, 전원 패드 제외), SDF(slow·fast), SDC, DEF, GDS | `out/` |
 
@@ -58,3 +58,10 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 2026-11-16 | 13 ns | −0.005 | **−1.134** | 확인 중 | 확인 중 | | 1차, 클럭 트리 문제 (위 절) |
 | 2026-11-16 | 13 ns | −0.699 (postCTS, IMEM_ADDR) | −0.000 (postCTS) | | | | 클럭 수정 1 뒤, 가상 클럭 전 |
 | 2026-11-17 | 13 ns | **0.000 (위반 0)**, reg2reg +5.016 | −0.000 (1경로) | 2 (Metal5 VDD 간격) | 568 (모두 VDD/VSS) | | 가상 클럭 적용. 전원망 수정 전, STEP 8 saveNetlist 오류 |
+| 2026-11-18 | 13 ns | +0.021, reg2reg +5.614 | +0.020 | **0** | IO 링 항목만 (12/2/398) + 스트라이프 끝 76 → `editTrim`으로 0 | 28,063 µm² | 코어 1000 µm, 전원 패드를 링으로 옮김(B안), 두 링 전원망. max_tran 4 넷(입력 패드, 최대 −0.044) |
+| 2026-11-18 | 13 ns | +0.014 | +0.020 | 499 | 신호 넷 끊김 19 | | 시험: 패드↔코어 넷 전체 Metal7-8 hard → 패드 차단 영역과 단락. 되돌림 |
+
+### 입력 패드 넷의 max_tran과 코어 크기 (2026-11-18)
+- 코어 1000 µm에서는 패드에서 코어까지 약 1.1 mm라 입력 패드 넷 몇 개(`irom_rdata`, `gpio_in` 일부)가 전이 시간 상한 0.28 ns를 최대 0.044 ns 넘었다. 구동 셀이 패드(크기 고정)이고 그 사이에 행이 없어 버퍼로 고칠 수 없다
+- 위층(Metal7-8) 배선 시험: 4 넷만 다시 배선하면 0이 됐지만, 전체 패드 넷에 강제(hard)하면 패드 셀 차단 영역(Metal4-8)과 단락 499개 → 적용하지 않음
+- 해결: 코어를 1400 µm로 키워 거리를 약 0.9 mm로 줄인다. 배선 몫이 거리의 제곱에 비례한다고 보면 최악 0.324 → 약 0.27 ns (미검증)

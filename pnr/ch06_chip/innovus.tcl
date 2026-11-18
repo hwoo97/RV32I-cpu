@@ -45,10 +45,14 @@ if {![file exists $NETLIST]} {
 
 # Floorplan: pad-limited chip (03_chapters/ch06_exception/chip.md sec. 3)
 #  die DIE x DIE um (set by the pad count); core box CORE_MARGIN um inside the die edge.
-#  The logic is about 35,000 um^2: a 1000 um core is ~3.5 % used and leaves room for buffers.
+#  The logic is about 35,000 um^2: a 1400 um core is ~1.8 % used and leaves room for buffers.
+#  2026-11-18: a 1000 um core (margin 1350) put the core 1.1 mm from the pads and a few input pad
+#  nets had max_tran up to -0.044 ns (pad driver fixed, no rows in between for buffers). The wire part
+#  of the transition goes with the length squared, so the core grows to 1400 um (910 um to the pads).
 #  (Before 2026-11-17 the core filled the pad ring, 2940 um, 0.4 % used.)
+#  env CORE_MARGIN overrides the margin for a test run.
 set DIE         3700
-set CORE_MARGIN 1350
+set CORE_MARGIN [expr {[info exists ::env(CORE_MARGIN)] ? $::env(CORE_MARGIN) : 1150}]
 # power plan (STEP 3): pad depth, gap between the IO ring and the outer power ring
 set PAD_DEPTH   240
 set OUTER_GAP   40      ;# 10 um left no room for pad pin access: 95 signal shorts with pad blockages
@@ -471,26 +475,10 @@ setNanoRouteMode -quiet -routeWithSiDriven 1
 setNanoRouteMode -quiet -routeTopRoutingLayer 11
 setNanoRouteMode -quiet -routeBottomRoutingLayer 1
 setNanoRouteMode -quiet -drouteEndIteration 5
-# Pad <-> core signal nets on Metal7-8. The core is far from the pads (about 1.1 mm, no rows in between
-# for buffers, pad drivers fixed), so these long nets need the lower resistance of the upper layers.
-# 2026-11-18: 4 input nets on Metal1-6 had max_tran -0.044 ns; on Metal7-8 (tried on 4 nets): 0.
-# The clock pad net is left to CTS. Board-side pad pins (nets with a top-level port) need no routing.
-set PADCORE_NETS {}
-foreach p [dbGet -e -p top.insts.name PAD_*] {
-    if {[string match PAD_CLK* [dbGet $p.name]]} { continue }
-    foreach t [dbGet -e $p.instTerms] {
-        set net [dbGet -e $t.net]
-        if {$net eq "" || $net eq "0x0" || [dbGet $net.isPwrOrGnd]} { continue }
-        if {[dbGet -e $net.terms] ne ""} { continue }
-        lappend PADCORE_NETS [dbGet $net.name]
-    }
-}
-set PADCORE_NETS [lsort -unique $PADCORE_NETS]
-puts "pad-core nets on Metal7-8: [llength $PADCORE_NETS]"
-foreach n $PADCORE_NETS {
-    setAttribute -net $n -bottom_preferred_routing_layer 7 -top_preferred_routing_layer 8 \
-        -preferred_routing_layer_effort hard
-}
+# No layer constraint on the pad <-> core nets (2026-11-18). A few input pad nets (about 1.1 mm from
+# pad to core, pad driver fixed, no rows in between) end with max_tran up to -0.044 ns, positive slack;
+# kept as a known DRV item. Tried: all pad-core nets on Metal7-8 with effort hard -> 499 DRC shorts with
+# the Metal4-8 blockages of the pad cells, 19 dangling / open signal nets at the pad pins, max_tran 2 left.
 routeDesign -globalDetail
 
 setAnalysisMode -analysisType onChipVariation
