@@ -346,6 +346,13 @@ eval addStripe $STRIPE_OPTS -area [list $OUTER_BOX] -layer Metal11 -direction ho
     -start_from bottom -start_offset [expr {$CY1 - $OY1 + 50}] -stop_offset [expr {$OY2 - $CY2 + 50}]
 pg_check 3-7_ring_stripes
 
+## 3-8. trim dangling stripe ends: the 3-4 core stripes run past their own inner ring to the outer
+##      edge of the ring pair (2026-11-18: 76 IMPVFC-94 dangling Metal10 / Metal11 ends at y 1331.69 /
+##      2368.62 in the STEP 7 check, not shown by the special-wire checks above). editTrim cuts each
+##      end back to its last connection; tried on the STEP 7 database: IMPVFC-94 76 -> 0, DRC 0.
+editTrim -nets {VDD VSS}
+pg_check 3-8_trim
+
 ## checks: DRC, connectivity, and power grid opens
 set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only default -check_same_via_cell true \
     -exclude_pg_net false -ignore_trial_route false -ignore_cell_blockage false \
@@ -464,6 +471,26 @@ setNanoRouteMode -quiet -routeWithSiDriven 1
 setNanoRouteMode -quiet -routeTopRoutingLayer 11
 setNanoRouteMode -quiet -routeBottomRoutingLayer 1
 setNanoRouteMode -quiet -drouteEndIteration 5
+# Pad <-> core signal nets on Metal7-8. The core is far from the pads (about 1.1 mm, no rows in between
+# for buffers, pad drivers fixed), so these long nets need the lower resistance of the upper layers.
+# 2026-11-18: 4 input nets on Metal1-6 had max_tran -0.044 ns; on Metal7-8 (tried on 4 nets): 0.
+# The clock pad net is left to CTS. Board-side pad pins (nets with a top-level port) need no routing.
+set PADCORE_NETS {}
+foreach p [dbGet -e -p top.insts.name PAD_*] {
+    if {[string match PAD_CLK* [dbGet $p.name]]} { continue }
+    foreach t [dbGet -e $p.instTerms] {
+        set net [dbGet -e $t.net]
+        if {$net eq "" || $net eq "0x0" || [dbGet $net.isPwrOrGnd]} { continue }
+        if {[dbGet -e $net.terms] ne ""} { continue }
+        lappend PADCORE_NETS [dbGet $net.name]
+    }
+}
+set PADCORE_NETS [lsort -unique $PADCORE_NETS]
+puts "pad-core nets on Metal7-8: [llength $PADCORE_NETS]"
+foreach n $PADCORE_NETS {
+    setAttribute -net $n -bottom_preferred_routing_layer 7 -top_preferred_routing_layer 8 \
+        -preferred_routing_layer_effort hard
+}
 routeDesign -globalDetail
 
 setAnalysisMode -analysisType onChipVariation

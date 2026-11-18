@@ -33,10 +33,10 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 0 | 경로·변수, SDC 펼치기 (`pnr.sdc`, 주기 = 목표) | |
 | 1 | `init_design` (넷리스트, LEF 3개, MMMC, IO 파일), `checkDesign` | `report/checkDesign` |
 | 2 | `floorPlan` (다이 3700 µm, 코어 1000 µm 사방을 가운데에, 목표 코어 여백 1350 µm), 패드 배치, 코어 전원 패드(AREAIO)를 링의 빈 자리로 옮김 → 행(row) 다시 만들기, IO 채움 셀. 수정 IO LEF(AREAIO)에서는 floorPlan이 코어를 패드 깊이(240 µm)만큼 줄여 잡으므로 여백을 1350 − 240 = 1110으로 요청한다 (미검증) | 콘솔 `floorPlan core margin`, `core box after floorPlan`, `pad moved into the ring` 8줄, `core box` = 1350 ~ 2350, 패드 링이 끊김 없이 이어졌는지 |
-| 3 | 전원망 (3-1 ~ 3-7): 전역 연결 → 안쪽 링(코어 둘레) → 셀 레일 → 코어 스트라이프 → 바깥 링(IO 링 40 µm 안쪽) → 전원 패드 → 바깥 링 → 두 링을 잇는 스트라이프, 하위 단계마다 전원 끊김·DRC 검사 | `report/03_pgcheck.txt` (하위 단계별 한 줄: 끊김 종류별 개수, DRC 수, 전원선 종류별 개수), `report/03_<하위단계>.open.rpt`, 콘솔 `core box` / `inner ring box` / `outer ring box` |
+| 3 | 전원망 (3-1 ~ 3-8): 전역 연결 → 안쪽 링(코어 둘레) → 셀 레일 → 코어 스트라이프 → 바깥 링(IO 링 40 µm 안쪽) → 전원 패드 → 바깥 링 → 두 링을 잇는 스트라이프 → 남는 스트라이프 끝 자르기(`editTrim`), 하위 단계마다 전원 끊김·DRC 검사 | `report/03_pgcheck.txt` (하위 단계별 한 줄: 끊김 종류별 개수, DRC 수, 전원선 종류별 개수), `report/03_<하위단계>.open.rpt`, 콘솔 `core box` / `inner ring box` / `outer ring box` |
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
 | 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
-| 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
+| 6 | 패드↔코어 신호 넷을 Metal7-8 우선으로 지정(코어까지 약 1.1 mm, 아래층이면 전이 시간 초과), 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
 | 7 | 채움 셀, DRC, 연결 검사, RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
 | 8 | 넷리스트(게이트 시뮬·LEC용, 평탄화, 전원 패드 제외), SDF(slow·fast), SDC, DEF, GDS | `out/` |
 
