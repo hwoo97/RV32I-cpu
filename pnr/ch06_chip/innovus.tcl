@@ -54,10 +54,15 @@ set PAD_DEPTH   240
 set OUTER_GAP   40      ;# 10 um left no room for pad pin access: 95 signal shorts with pad blockages
 
 set G       $::env(GPDK045_DIR)/digital
+# IO LEF: giolib045_modify.lef (PADVDD / PADVSS as CLASS PAD AREAIO, as in the earlier project) or the
+# original giolib045.lef (CLASS PAD). With AREAIO the floorPlan puts the core power pads inside the core
+# box (STEP 2 moves them to the ring); env IO_LEF selects the file for a test run.
+set IO_LEF [expr {[info exists ::env(IO_LEF)] ? $::env(IO_LEF) : "giolib045_modify.lef"}]
 set LEF_FILES [list \
     $G/gsclib045_all_v4.4/gsclib045_tech/lef/gsclib045_tech.lef \
     $G/gsclib045_all_v4.4/gsclib045/lef/gsclib045_macro.lef \
-    $G/giolib045_v3.5/lef/giolib045_modify.lef]
+    $G/giolib045_v3.5/lef/$IO_LEF]
+puts "IO LEF = $IO_LEF"
 
 foreach d {log report dbs out} { file mkdir $d }
 
@@ -89,8 +94,20 @@ saveDesign dbs/01_init
 ####################################################################
 
 # die size and core box (small core in the middle, empty space up to the pads for the power rings);
-# the pads go around the die edge in the order of rv32i_chip.io
-floorPlan -site CoreSite -d $DIE $DIE $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN
+# the pads go around the die edge in the order of rv32i_chip.io.
+# With the AREAIO pads the core box came out PAD_DEPTH smaller on every side than requested
+# (2026-11-18: 1350 requested -> 1590), and it cannot be set afterwards (dbSet coreBox not allowed,
+# createRow / saveDesign keep it). So ask for PAD_DEPTH more: FP_MARGIN = CORE_MARGIN - PAD_DEPTH.
+# The check after the pad move stops the run if the core box is still not CORE_MARGIN.
+if {[string match "*modify*" $IO_LEF]} {
+    set FP_MARGIN [expr {$CORE_MARGIN - $PAD_DEPTH}]
+} else {
+    set FP_MARGIN $CORE_MARGIN
+}
+puts "floorPlan core margin = $FP_MARGIN (target core box margin = $CORE_MARGIN)"
+floorPlan -site CoreSite -d $DIE $DIE $FP_MARGIN $FP_MARGIN $FP_MARGIN $FP_MARGIN
+lassign [concat {*}[dbGet top.fPlan.coreBox]] cx1 cy1 cx2 cy2
+puts "core box after floorPlan = $cx1 $cy1 $cx2 $cy2"
 
 # Move the core power pads into the pad ring.
 #  PADVDD / PADVSS are AREAIO class in the IO LEF used here, so the IO file does not put them in the ring:
@@ -157,8 +174,11 @@ proc place_pads_in_ring {iofile} {
 }
 set n_moved [place_pads_in_ring $PNR_DIR/rv32i_chip.io]
 puts "pads moved into the ring: $n_moved"
-# floorplan again with every pad in the ring: rows and core box back to the full CORE_MARGIN box
-floorPlan -site CoreSite -d $DIE $DIE $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN $CORE_MARGIN
+# rows again over the whole core box (the first floorPlan left out the band the pads took).
+# Not a second floorPlan: it saves the area IO cells relative to the core and puts them back inside
+# (2026-11-18: P_N_VDD back at 1590 1870 after the second floorPlan)
+deleteRow -all
+createRow -site CoreSite -area [list $CORE_MARGIN $CORE_MARGIN [expr {$DIE - $CORE_MARGIN}] [expr {$DIE - $CORE_MARGIN}]]
 # checks: every pad of the IO file in the ring, core box close to the requested one
 dict for {side names} [io_side_order $PNR_DIR/rv32i_chip.io] {
     foreach nm $names {
@@ -169,7 +189,7 @@ lassign [concat {*}[dbGet top.fPlan.coreBox]] cx1 cy1 cx2 cy2
 puts "core box = $cx1 $cy1 $cx2 $cy2 (requested [expr {$DIE - 2 * $CORE_MARGIN}] um square at $CORE_MARGIN)"
 if {abs($cx1 - $CORE_MARGIN) > 5 || abs($cx2 - ($DIE - $CORE_MARGIN)) > 5 ||
     abs($cy1 - $CORE_MARGIN) > 5 || abs($cy2 - ($DIE - $CORE_MARGIN)) > 5} {
-    error "core box $cx1 $cy1 $cx2 $cy2 is not the requested one - a pad or block still cuts the rows"
+    error "core box $cx1 $cy1 $cx2 $cy2 is not the requested one (floorPlan margin $FP_MARGIN) - a pad or block still cuts the rows, or the shrink is not PAD_DEPTH"
 }
 # fill the gaps between pads so the IO ring is continuous
 foreach side {n s w e} {
