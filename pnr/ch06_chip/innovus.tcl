@@ -89,6 +89,18 @@ set init_pwr_net    VDD
 set init_gnd_net    VSS
 init_design
 
+# Double-height cells (SITE CoreSiteDouble) need rows of that site, and the floorplan has CoreSite rows
+# only. 2026-11-18: the optimizer put 95 IO buffers (FE_OFC*) on such cells -> checkPlace 'TechSite' 95,
+# IMPSP-365 (found only in the Violation Browser). Keep the tool from choosing them.
+set DOUBLE_CELLS [lsort -unique [dbGet -e [dbGet -e -p head.libCells.site.name CoreSiteDouble].name]]
+puts "double-height cells (dont_use): [llength $DOUBLE_CELLS] - $DOUBLE_CELLS"
+foreach c $DOUBLE_CELLS { setDontUse $c true }
+set n_dbl 0
+foreach inst [dbGet top.insts] {
+    if {[lsearch -exact $DOUBLE_CELLS [dbGet $inst.cell.name]] >= 0} { incr n_dbl }
+}
+if {$n_dbl > 0} { puts "WARNING: $n_dbl netlist instances use double-height cells (check synthesis)" }
+
 checkDesign -io -netlist -physicalLibrary -powerGround -tieHilo -timingLibrary -outdir report/checkDesign
 report_analysis_views
 saveDesign dbs/01_init
@@ -399,12 +411,16 @@ saveDesign dbs/04_place
 #  - no IO latency update: the board clock edge at the CLK pin is time 0 for every path, so IO paths
 #    see the real insertion delay (as the chip would)
 set CTS_BUFS {}
+# (double-height cells left out: no rows for them, see STEP 1; list again after a restoreDesign)
+if {![info exists DOUBLE_CELLS]} {
+    set DOUBLE_CELLS [lsort -unique [dbGet -e [dbGet -e -p head.libCells.site.name CoreSiteDouble].name]]
+}
 foreach c {CLKBUFX8 CLKBUFX12 CLKBUFX16 CLKBUFX20} {
-    if {[dbGet -e head.libCells.name $c] ne ""} { lappend CTS_BUFS $c }
+    if {[dbGet -e head.libCells.name $c] ne "" && [lsearch -exact $DOUBLE_CELLS $c] < 0} { lappend CTS_BUFS $c }
 }
 set CTS_INVS {}
 foreach c {CLKINVX8 CLKINVX12 CLKINVX16 CLKINVX20} {
-    if {[dbGet -e head.libCells.name $c] ne ""} { lappend CTS_INVS $c }
+    if {[dbGet -e head.libCells.name $c] ne "" && [lsearch -exact $DOUBLE_CELLS $c] < 0} { lappend CTS_INVS $c }
 }
 puts "CTS buffers: $CTS_BUFS   inverters: $CTS_INVS"
 create_route_type -name clk_trunk -top_preferred_layer Metal8 -bottom_preferred_layer Metal7
@@ -501,6 +517,8 @@ addFiller -cell {FILL64 FILL32 FILL16 FILL8 FILL4 FILL2 FILL1} -prefix FILLER
 set_verify_drc_mode -report report/07_finish.drc.rpt -limit 1000
 verify_drc
 verifyConnectivity -type all -geomConnect -error 1000 -warning 50 -report report/07_finish.conn.rpt
+# placement legality (cells on the right site, no overlaps): not part of verify_drc / verifyConnectivity
+checkPlace report/07_checkplace.rpt
 extractRC
 timeDesign -postRoute       -outDir report/timing/final
 timeDesign -postRoute -hold -outDir report/timing/final_hold

@@ -37,7 +37,7 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 4 | `place_design`, `place_opt_design`, 혼잡도, `timeDesign -preCTS` | 셀이 코어 가운데 몰려 있음(면적이 작음) |
 | 5 | CTS (`ccopt_design`: 강한 클럭 셀, trunk Metal7-8, 목표 스큐 0.05 ns, IO 지연 자동 보정 끔), 전파 클럭, 가상 클럭 `vclk` 지연 = 측정한 평균 삽입 지연(뷰별), `optDesign -postCTS` (+hold) | `report/05_*`, 로그의 `vclk latency`, 클럭 트리 표시 |
 | 6 | 배선 `routeDesign`, OCV, `optDesign -postRoute` (drv, setup, hold) | `report/timing/postRoute*` |
-| 7 | 채움 셀, DRC, 연결 검사, RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
+| 7 | 채움 셀, DRC, 연결 검사, 배치 검사(`checkPlace`), RC 추출, 최종 타이밍·면적·전력 | `report/07_*`, Violation Browser |
 | 8 | 넷리스트(게이트 시뮬·LEC용, 평탄화, 전원 패드 제외), SDF(slow·fast), SDC, DEF, GDS | `out/` |
 
 ## 확인할 점 (서버에서 처음 실행할 때)
@@ -60,9 +60,16 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 2026-11-17 | 13 ns | **0.000 (위반 0)**, reg2reg +5.016 | −0.000 (1경로) | 2 (Metal5 VDD 간격) | 568 (모두 VDD/VSS) | | 가상 클럭 적용. 전원망 수정 전, STEP 8 saveNetlist 오류 |
 | 2026-11-18 | 13 ns | +0.021, reg2reg +5.614 | +0.020 | **0** | IO 링 항목만 (12/2/398) + 스트라이프 끝 76 → `editTrim`으로 0 | 28,063 µm² | 코어 1000 µm, 전원 패드를 링으로 옮김(B안), 두 링 전원망. max_tran 4 넷(입력 패드, 최대 −0.044) |
 | 2026-11-18 | 13 ns | +0.014 | +0.020 | 499 | 신호 넷 끊김 19 | | 시험: 패드↔코어 넷 전체 Metal7-8 hard → 패드 차단 영역과 단락. 되돌림 |
-| 2026-11-18 | 13 ns | **+0.047**, reg2reg +5.384 | **+0.020** | **0** | **IO 링 항목만** (12/2/398) | 밀도 1.44 % | 코어 1400 µm. DRV Real 0 (max_tran 0). 완성 기준 통과 |
+| 2026-11-18 | 13 ns | **+0.047**, reg2reg +5.384 | **+0.020** | **0** | **IO 링 항목만** (12/2/398) | 밀도 1.44 % | 코어 1400 µm. DRV Real 0 (max_tran 0). 단, checkPlace TechSite 95 (이중 높이 셀, 아래 절) → 수정 후 재실행 |
 
 ### 입력 패드 넷의 max_tran과 코어 크기 (2026-11-18)
 - 코어 1000 µm에서는 패드에서 코어까지 약 1.1 mm라 입력 패드 넷 몇 개(`irom_rdata`, `gpio_in` 일부)가 전이 시간 상한 0.28 ns를 최대 0.044 ns 넘었다. 구동 셀이 패드(크기 고정)이고 그 사이에 행이 없어 버퍼로 고칠 수 없다
 - 위층(Metal7-8) 배선 시험: 4 넷만 다시 배선하면 0이 됐지만, 전체 패드 넷에 강제(hard)하면 패드 셀 차단 영역(Metal4-8)과 단락 499개 → 적용하지 않음
 - 해결: 코어를 1400 µm로 키워 거리를 약 0.9 mm로 줄였다 → max_tran Real 0 (서버 확인)
+
+### 이중 높이 셀과 배치 검사 (2026-11-18)
+- 최종 실행의 GUI에서 코어 가운데에 흰 X 표시가 남았다. DRC·연결 리포트에는 없고 Violation Browser의 **CheckPlace / TechSite 95**였다
+- `checkPlace`: IMPSP-365 "SITE `CoreSiteDouble` 셀이 있는데 그 사이트의 행이 없음". 최적화가 IO 넷에 넣은 버퍼(`FE_OFC*`) 95개가 이중 높이 셀이었다. 행은 `CoreSite`만 있어 위치가 규칙에 맞지 않는다
+- 수정: STEP 1에서 사이트가 `CoreSiteDouble`인 셀을 모두 `setDontUse`(셀 이름을 적지 않고 라이브러리에서 찾음), CTS 셀 목록에서도 뺀다. STEP 7에 `checkPlace` → `report/07_checkplace.rpt`
+- 확인할 것: 콘솔 `double-height cells (dont_use)` 줄, `07_checkplace.rpt`의 TechSite 0 (미검증)
+
