@@ -61,6 +61,7 @@ bash pnr/ch06_chip/run_pnr.sh 12
 | 2026-11-18 | 13 ns | +0.021, reg2reg +5.614 | +0.020 | **0** | IO 링 항목만 (12/2/398) + 스트라이프 끝 76 → `editTrim`으로 0 | 28,063 µm² | 코어 1000 µm, 전원 패드를 링으로 옮김(B안), 두 링 전원망. max_tran 4 넷(입력 패드, 최대 −0.044) |
 | 2026-11-18 | 13 ns | +0.014 | +0.020 | 499 | 신호 넷 끊김 19 | | 시험: 패드↔코어 넷 전체 Metal7-8 hard → 패드 차단 영역과 단락. 되돌림 |
 | 2026-11-18 | 13 ns | **+0.047**, reg2reg +5.384 | **+0.020** | **0** | **IO 링 항목만** (12/2/398) | 밀도 1.44 % | 코어 1400 µm. DRV Real 0 (max_tran 0). 단, checkPlace TechSite 95 (이중 높이 셀, 아래 절) → 수정 후 재실행 |
+| 2026-11-19 | 13 ns | **+0.041**, reg2reg +5.140 | **+0.020** | **0** | **IO 링 항목만** (12/2/398) | **28,236.5 µm²** | 최종. 이중 높이 셀 dontUse 수정 뒤 재실행: checkPlace 위반 0, DRV Real 0, 밀도 1.44 % |
 
 ### 입력 패드 넷의 max_tran과 코어 크기 (2026-11-18)
 - 코어 1000 µm에서는 패드에서 코어까지 약 1.1 mm라 입력 패드 넷 몇 개(`irom_rdata`, `gpio_in` 일부)가 전이 시간 상한 0.28 ns를 최대 0.044 ns 넘었다. 구동 셀이 패드(크기 고정)이고 그 사이에 행이 없어 버퍼로 고칠 수 없다
@@ -72,5 +73,5 @@ bash pnr/ch06_chip/run_pnr.sh 12
 - `checkPlace`: IMPSP-365 "SITE `CoreSiteDouble` 셀이 있는데 그 사이트의 행이 없음". 최적화가 IO 넷에 넣은 버퍼(`FE_OFC*`) 95개가 이중 높이 셀이었다. 행은 `CoreSite`만 있어 위치가 규칙에 맞지 않는다
 - 수정: STEP 1에서 사이트가 `CoreSiteDouble`인 셀을 모두 `setDontUse`(셀 이름을 적지 않고 라이브러리에서 찾음), CTS 셀 목록에서도 뺀다. STEP 7에 `checkPlace` → `report/07_checkplace.rpt`
 - 1차 수정(2026-11-18)은 효과가 없었다: `dbGet -p head.libCells.site.name` 이 셀이 아니라 사이트 객체를 돌려줘 아무 셀도 막지 못함 (재실행 결과가 인스턴스 이름까지 같았음). 2026-11-19 셀마다 사이트를 읽는 반복문으로 고침
-- 확인할 것: 콘솔 `double-height cells (dont_use)` 줄(BUFX2 포함, 개수 1 이상), `07_checkplace.rpt`의 TechSite 0 (미검증)
+- 결과 (2026-11-19 서버 확인): BUFX2 dontUse = 1, BUFX2 인스턴스 0, `07_checkplace.rpt` "No violations found", Violation Browser에 CheckPlace 없음
 
