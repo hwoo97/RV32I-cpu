@@ -3,14 +3,22 @@
 // Testbench for the ch6 chip (rv32i_chip: rv32i_mcu + IO pads) - same programs as mcu_exc_tb
 //  - The memories sit outside the chip and use the 12-bit word addresses on the chip pins:
 //      IMEM port A <- IMEM_ADDR, IMEM port B (data-side read) <- DADDR, DMEM <- DADDR / RAM_WSTRB / RAM_WDATA
-//  - +HEX=<file>, +MAXCYC=<dec>, +TRACE (as in mcu_exc_tb)
+//  - +HEX=<file>, +MAXCYC=<dec>, +TRACE (as in mcu_exc_tb), +PERIOD_PS=<dec> clock period in ps
+//    (default 10000 = 10 ns; the gate-level run after PnR uses the PnR target, e.g. 13000)
+//  - Reset is held for 4 clock cycles (gate-level: the reset pad and the clock tree have delays)
+//  - Gate-level run (PnR netlist + SDF): sim/ch06_exception/run_chip_gate.sh
 //  - Result: stores to the TOHOST words at the end of DMEM, watched on the chip pins (DMEM write pins)
 //  - Pins: GPIO pads have a weak pull-down; EXT_IRQ = GPIO[15] (a program raises its own external
 //    interrupt), UART_RX = UART_TX
 //  - Pad models: sim/ch06_exception/pad_models.v on this PC, the PDK pad models on the server
 module chip_tb;
     reg  clk = 0, rst_n = 0;
-    always #5 clk = ~clk;
+    integer period_ps;
+    initial begin
+        if (!$value$plusargs("PERIOD_PS=%d", period_ps)) period_ps = 10000;
+        $display("clock period: %0d ps", period_ps);
+        forever #(period_ps / 2000.0) clk = ~clk;
+    end
 
     wire [11:0] IMEM_ADDR, DADDR;
     wire [31:0] IMEM_DATA, IROM_DATA, RAM_RDATA, RAM_WDATA;
@@ -27,6 +35,16 @@ module chip_tb;
         .UART_RX(UART_TX), .UART_TX(UART_TX),
         .TRAP(TRAP), .IRQ_TAKEN(IRQ_TAKEN), .BUS_ERR(BUS_ERR), .TIMER_IRQ(TIMER_IRQ)
     );
+
+    // -- gate-level run: SDF delays on the PnR netlist (set by run_chip_gate.sh, as in the lab flow)
+    //    +define+GATE_SDF=\"<sdf file>\"  [+define+GATE_SDF_MIN for the fast (min) corner]
+`ifdef GATE_SDF
+  `ifdef GATE_SDF_MIN
+    initial $sdf_annotate(`GATE_SDF, dut, , "sdf_annotate.log", "MINIMUM");
+  `else
+    initial $sdf_annotate(`GATE_SDF, dut, , "sdf_annotate.log", "MAXIMUM");
+  `endif
+`endif
 
     // -- memories outside the chip (byte address = word address << 2) --
     mcu_imem #(.AW(`MM_IMEM_AW)) u_imem (
@@ -61,7 +79,8 @@ module chip_tb;
             u_dmem.mem[i] = 32'd0;
         end
         $readmemh(hex, u_imem.mem);
-        #12 rst_n = 1;
+        repeat (4) @(negedge clk);
+        rst_n = 1;
     end
 
     always @(posedge clk)

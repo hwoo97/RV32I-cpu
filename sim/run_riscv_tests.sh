@@ -19,6 +19,7 @@
 #     PLUSARGS   extra plusargs, space separated, e.g. "WAITPCT=30 SEED=7"
 #     HEX_DIR    folder of the test hex files                     (default sim/riscv-tests-hex/rv32ui)
 #     XRUN_OPTS  extra xrun options, e.g. "-timescale 1ns/1ps" for library models without `timescale
+#     BUILD_NAME build folder name under sim/build/                (default <TB_TOP>_xrun)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RTL="${RTL_DIR:-$ROOT/rtl/ch05_single_cycle}"
@@ -26,7 +27,7 @@ RTL="$(cd "$RTL" && pwd)"
 TB="$(cd "$(dirname "${TB_FILE:-$ROOT/sim/ch05_single_cycle/rv32i_sc_tb.v}")" && pwd)/$(basename "${TB_FILE:-rv32i_sc_tb.v}")"
 TOP="${TB_TOP:-rv32i_sc_tb}"
 HEX_DIR="$(cd "${HEX_DIR:-$ROOT/sim/riscv-tests-hex/rv32ui}" && pwd)"
-BUILD="$ROOT/sim/build/${TOP}_xrun"
+BUILD="$ROOT/sim/build/${BUILD_NAME:-${TOP}_xrun}"
 
 # Extra sources (absolute paths) and their folders as include dirs
 EXTRA=(); INCS=(-incdir "$RTL")
@@ -41,7 +42,7 @@ if [ "$1" = "--gui" ]; then
     name="${2:-simple}"
     h="$HEX_DIR/$name.hex"
     [ -f "$h" ] || { echo "FAIL: no hex file $h"; exit 1; }
-    GUI_DIR="$ROOT/sim/build/${TOP}_gui"
+    GUI_DIR="$ROOT/sim/build/${BUILD_NAME:-${TOP}}_gui"
     mkdir -p "$GUI_DIR" && cd "$GUI_DIR" || exit 1
     # probe script for this top (same content as sim/ch05_single_cycle/rv32i_sc_probe.tcl)
     printf 'database -open waves -shm -into waves.shm -default

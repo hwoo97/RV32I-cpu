@@ -119,4 +119,30 @@ bash sim/ch06_exception/run_chip_tests.sh
 |------|------|------|------|
 | 2026-11-14 | rv32ui / rv32mi / trap | **40/40, 15/15, 3/3 PASS** | xsim, 단순 패드 모델. rv32ui 합 15,774사이클 = MCU 수준과 같음 |
 | | 전체 | 미검증 | 학교 서버 Xcelium, PDK 패드 모델 |
+| 2026-11-19 | rv32ui / rv32mi / trap | **40/40, 15/15, 3/3 PASS** | xsim, `chip_tb` 수정 뒤(클럭 주기 `+PERIOD_PS`, 리셋 4사이클). trap은 13 ns(`PERIOD_PS=13000`)로도 3/3 |
 - `fw/hello`는 칩에서 돌리지 않는다: hello는 GPIO 입력이 따로 있는 4단계 시험 배선(`gpio_in = {gpio_out[7:0], 8'hC3}`)을 전제로 하는데, 칩의 GPIO는 양방향 패드 하나라 같은 배선을 만들 수 없다. 칩 경로는 riscv-tests와 트랩 시험이 확인한다
+
+## 6. 게이트 수준 시뮬레이션 — PnR 넷리스트 + SDF (서버)
+- 5절과 **같은 테스트벤치·프로그램**(rv32ui 40, rv32mi 15, trap 3)을 PnR 넷리스트(`pnr/ch06_chip/runs/<실행>/out/rv32i_chip_pnr.v`)로 돌린다. 칩 RTL은 컴파일하지 않고, 메모리 모델(`mcu_imem.v`, `mcu_dmem.v`)만 함께 넣는다
+- 모델: 표준 셀 `slow_vdd1v0_basicCells.v`, 패드 `pads_SS_s1vg.v` (`GPDK045_DIR`에서 읽음, 저장소에 넣지 않음), 전원 패드 `pad_power.v`
+- 지연: PnR STEP 8의 SDF(`rv32i_chip_slow.sdf` / `_fast.sdf`)를 수업 실습과 같은 방식으로 붙인다 — `chip_tb.v`의 `` `ifdef GATE_SDF `` 블록에서 `$sdf_annotate`(대상 `dut`, slow = MAXIMUM, fast = `GATE_SDF_MIN` 정의 시 MINIMUM), 스크립트가 `+define+GATE_SDF="<SDF 경로>"`로 켠다. 셀 모델의 타이밍 검사(setup·hold)를 켜고(`-neg_tchk`) 로그의 `Timing violation` 수를 센다
+- 셀 모델 폴더: `gsclib045_all_v4.4/gsclib045/verilog` (PnR LEF·lib와 같은 폴더. 실습이 쓴 `gsclib045_svt_v4.4/gsclib045/verilog`에도 같은 파일 목록이 있음, 2026-11-19 서버 확인)
+- 클럭: PnR 목표 13 ns (`+PERIOD_PS=13000`). 리셋은 4사이클 잡는다 (리셋 패드·클럭 트리 지연)
+- 통과 기준: 모든 시험 PASS + 타이밍 검사 위반 0 + SDF 붙이기 오류 0
+
+| 실행 | 명령 |
+|------|------|
+| slow 코너 (setup 쪽) | `bash sim/ch06_exception/run_chip_gate.sh` |
+| fast 코너 (hold 쪽) | `bash sim/ch06_exception/run_chip_gate.sh --corner fast` |
+| 지연 없이 (넷리스트 기능만) | `bash sim/ch06_exception/run_chip_gate.sh --corner none` |
+| 묶음·시험 하나 | `bash sim/ch06_exception/run_chip_gate.sh trap irq_ext` |
+| 파형 (SimVision) | `bash sim/ch06_exception/run_chip_gate.sh trap --gui irq_timer` |
+| 다른 PnR 실행 폴더 | `env PNR_OUT=<out 폴더> bash sim/ch06_exception/run_chip_gate.sh` (csh) |
+
+- 넷리스트 기본 위치: `pnr/ch06_chip/runs/t13ns/out`이 있으면 그것, 없으면 `runs/work/out`(`--gui` 실행)
+- 결과 로그: `sim/build/chip_gate_<코너>/run_<시험>.log`, SDF 붙이기 로그: `sim/build/chip_gate_<코너>/sdf_annotate.log`
+
+| 날짜 | 코너 | rv32ui / rv32mi / trap | 타이밍 검사 위반 | 비고 |
+|------|------|------|:---:|------|
+| | slow | 미검증 | | |
+| | fast | 미검증 | | |

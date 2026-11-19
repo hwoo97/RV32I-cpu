@@ -78,7 +78,7 @@
 | 3 | 칩 합성: 표준 셀 + 패드 `.lib`, 칩 핀 기준 SDC | `syn/ch06_chip/` |
 | 4 | PnR: 예전 `all.tcl` 흐름 (평면 배치, 패드, 전원망, 배치, CTS, 배선, 마무리), 단계마다 `saveDesign`, `--gui`·`-i` | `pnr/ch06_chip/` |
 | 5 | PnR 후: 타이밍(setup slow, hold fast), DRC, 연결 검사, 넷리스트·SDF·GDS | |
-| 6 | 게이트 수준 시뮬레이션: PnR 넷리스트 + SDF + 셀·패드 Verilog 모델 (서버) | |
+| 6 | 게이트 수준 시뮬레이션: PnR 넷리스트 + SDF + 셀·패드 Verilog 모델 (서버) | `sim/ch06_exception/run_chip_gate.sh` ([test.md](test.md) 6절) |
 | 7 | LEC: RTL ↔ 합성, 합성 ↔ PnR (교수님 서버) | `ec/ch06_chip/` |
 
 - 셀·패드 라이브러리 경로는 `GPDK045_DIR` 환경 변수에서 (저장소에 경로를 쓰지 않음)
