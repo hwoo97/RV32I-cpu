@@ -71,5 +71,6 @@ bash pnr/ch06_chip/run_pnr.sh 12
 - 최종 실행의 GUI에서 코어 가운데에 흰 X 표시가 남았다. DRC·연결 리포트에는 없고 Violation Browser의 **CheckPlace / TechSite 95**였다
 - `checkPlace`: IMPSP-365 "SITE `CoreSiteDouble` 셀이 있는데 그 사이트의 행이 없음". 최적화가 IO 넷에 넣은 버퍼(`FE_OFC*`) 95개가 이중 높이 셀이었다. 행은 `CoreSite`만 있어 위치가 규칙에 맞지 않는다
 - 수정: STEP 1에서 사이트가 `CoreSiteDouble`인 셀을 모두 `setDontUse`(셀 이름을 적지 않고 라이브러리에서 찾음), CTS 셀 목록에서도 뺀다. STEP 7에 `checkPlace` → `report/07_checkplace.rpt`
-- 확인할 것: 콘솔 `double-height cells (dont_use)` 줄, `07_checkplace.rpt`의 TechSite 0 (미검증)
+- 1차 수정(2026-11-18)은 효과가 없었다: `dbGet -p head.libCells.site.name` 이 셀이 아니라 사이트 객체를 돌려줘 아무 셀도 막지 못함 (재실행 결과가 인스턴스 이름까지 같았음). 2026-11-19 셀마다 사이트를 읽는 반복문으로 고침
+- 확인할 것: 콘솔 `double-height cells (dont_use)` 줄(BUFX2 포함, 개수 1 이상), `07_checkplace.rpt`의 TechSite 0 (미검증)
 

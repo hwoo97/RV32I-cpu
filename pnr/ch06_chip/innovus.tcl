@@ -92,8 +92,15 @@ init_design
 # Double-height cells (SITE CoreSiteDouble) need rows of that site, and the floorplan has CoreSite rows
 # only. 2026-11-18: the optimizer put 95 IO buffers (FE_OFC*) on such cells -> checkPlace 'TechSite' 95,
 # IMPSP-365 (found only in the Violation Browser). Keep the tool from choosing them.
-set DOUBLE_CELLS [lsort -unique [dbGet -e [dbGet -e -p head.libCells.site.name CoreSiteDouble].name]]
+# (2026-11-19: 'dbGet -p head.libCells.site.name' returned the site, not the cells -> nothing was
+#  blocked. Walk the library cells and read each cell's site instead.)
+set DOUBLE_CELLS {}
+foreach lc [dbGet head.libCells] {
+    if {[dbGet -e $lc.site.name] eq "CoreSiteDouble"} { lappend DOUBLE_CELLS [dbGet $lc.name] }
+}
+set DOUBLE_CELLS [lsort -unique $DOUBLE_CELLS]
 puts "double-height cells (dont_use): [llength $DOUBLE_CELLS] - $DOUBLE_CELLS"
+if {[llength $DOUBLE_CELLS] == 0} { puts "WARNING: no CoreSiteDouble library cells found - check the site name" }
 foreach c $DOUBLE_CELLS { setDontUse $c true }
 set n_dbl 0
 foreach inst [dbGet top.insts] {
@@ -413,7 +420,11 @@ saveDesign dbs/04_place
 set CTS_BUFS {}
 # (double-height cells left out: no rows for them, see STEP 1; list again after a restoreDesign)
 if {![info exists DOUBLE_CELLS]} {
-    set DOUBLE_CELLS [lsort -unique [dbGet -e [dbGet -e -p head.libCells.site.name CoreSiteDouble].name]]
+    set DOUBLE_CELLS {}
+    foreach lc [dbGet head.libCells] {
+        if {[dbGet -e $lc.site.name] eq "CoreSiteDouble"} { lappend DOUBLE_CELLS [dbGet $lc.name] }
+    }
+    foreach c $DOUBLE_CELLS { setDontUse $c true }
 }
 foreach c {CLKBUFX8 CLKBUFX12 CLKBUFX16 CLKBUFX20} {
     if {[dbGet -e head.libCells.name $c] ne "" && [lsearch -exact $DOUBLE_CELLS $c] < 0} { lappend CTS_BUFS $c }
