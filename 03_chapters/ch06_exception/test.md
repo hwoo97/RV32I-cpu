@@ -99,6 +99,10 @@ python sim/ch06_exception/run_fw_tests.py
 ```bash
 bash sim/ch06_exception/run_fw_tests.sh
 ```
+- 실습처럼 xrun을 직접 실행 (저장소 루트에서, 인자 파일 [fw_exc.f](../../sim/ch06_exception/fw_exc.f) + probe [fw_exc_probe.tcl](../../sim/ch06_exception/fw_exc_probe.tcl)). SimVision 콘솔에서 `run` → `UART| Hello, RV32I MCU!` …, 파형에서 `fw_exc_tb.ch`를 Radix ASCII로 보면 글자가 차례로 보인다
+```bash
+xrun -f sim/ch06_exception/fw_exc.f -access +rwc -gui -input sim/ch06_exception/fw_exc_probe.tcl +HEX=fw/hex/hello.hex -l fw_exc_gui.log
+```
 
 | 날짜 | 결과 | 사이클 | 비고 |
 |------|------|-------:|------|
@@ -113,6 +117,10 @@ python sim/ch06_exception/run_chip_tests.py
 ```
 ```bash
 bash sim/ch06_exception/run_chip_tests.sh
+```
+- 실습처럼 xrun 직접 실행: [chip_rtl.f](../../sim/ch06_exception/chip_rtl.f) (패드 모델은 `${GPDK045_DIR}` 경로) + [chip_probe.tcl](../../sim/ch06_exception/chip_probe.tcl)
+```bash
+xrun -f sim/ch06_exception/chip_rtl.f -access +rwc -gui -input sim/ch06_exception/chip_probe.tcl +HEX=sim/ch06_exception/tests/hex/irq_timer.hex -l chip_rtl_gui.log
 ```
 
 | 날짜 | 묶음 | 결과 | 비고 |
@@ -140,6 +148,11 @@ bash sim/ch06_exception/run_chip_tests.sh
 | 다른 PnR 실행 폴더 | `env PNR_OUT=<out 폴더> bash sim/ch06_exception/run_chip_gate.sh` (csh) |
 
 - 넷리스트 기본 위치: `pnr/ch06_chip/runs/t13ns/out`이 있으면 그것, 없으면 `runs/work/out`(`--gui` 실행)
+- **실습처럼 xrun 직접 실행** (저장소 루트에서, [chip_gate.f](../../sim/ch06_exception/chip_gate.f)): `runs/work/out`의 넷리스트를 읽고, SDF는 `+define+GATE_SDF_SLOW` 또는 `+define+GATE_SDF_FAST`로 켠다 (실습의 `+define+sdf_post_wst`와 같은 방식, `chip_tb.v`가 해당 SDF를 `$sdf_annotate`). 클럭 13 ns는 파일 안 `+PERIOD_PS=13000`
+```bash
+xrun -f sim/ch06_exception/chip_gate.f +define+GATE_SDF_SLOW -access +rwc -gui -input sim/ch06_exception/chip_probe.tcl +HEX=sim/ch06_exception/tests/hex/irq_timer.hex -l chip_gate_gui.log
+```
+- 인자 파일 확인(2026-11-19, PC xsim, PDK 패드 모델 대신 `pad_models.v`): `fw_exc.f` 목록으로 hello PASS(191글자), `chip_rtl.f` 목록으로 irq_timer PASS, `GATE_SDF_SLOW` 정의 시 SDF 파일을 찾음(매크로 정상). 서버 Xcelium에서 직접 실행, 인자 파일 안 `${GPDK045_DIR}` 펼침, `chip_gate.f`는 미검증
 - 결과 로그: `sim/build/chip_gate_<코너>/run_<시험>.log`, SDF 붙이기 로그: `sim/build/chip_gate_<코너>/sdf_annotate.log`
 
 | 날짜 | 코너 | rv32ui / rv32mi / trap | 타이밍 검사 위반 | 비고 |

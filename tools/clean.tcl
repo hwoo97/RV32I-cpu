@@ -22,7 +22,7 @@
 #         (xcelium.d, INCA_libs, *.shm, .simvision, xrun.history, xrun.key, xrun.log, *.diag)
 #   syn : syn/<chapter>/runs/ and genus.cmd*, genus.log*, fv/ at the repo root
 #   pnr : pnr/<chapter>/runs/ and innovus.cmd*, innovus.log* at the repo root
-#   ec  : ec/<chapter>/runs/ and lec log files at the repo root
+#   ec  : ec/<chapter>/runs/, ec/<chapter>/out/ (LEC tar) and lec log files at the repo root
 #
 # Safety
 #   - Only paths inside the repository are deleted, never the repository root itself
@@ -42,11 +42,12 @@ proc ::clean::patterns {target chapter} {
         sim {
             if {$chapter ne ""} { return [list sim/build/*] }
             return [list sim/build xcelium.d INCA_libs *.shm .simvision xrun.history xrun.key xrun.log *.diag \
+                         fw_exc*.log chip_rtl*.log chip_gate*.log sdf_annotate.log \
                          sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log]
         }
         syn { return [concat [list syn/$ch/runs] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
-        ec  { return [concat [list ec/$ch/runs]  [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
+        ec  { return [concat [list ec/$ch/runs ec/$ch/out] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
         default { error "unknown target '$target' (use sim, syn, pnr, ec, all)" }
     }
 }

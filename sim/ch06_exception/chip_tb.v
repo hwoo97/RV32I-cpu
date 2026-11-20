@@ -38,12 +38,18 @@ module chip_tb;
 
     // -- gate-level run: SDF delays on the PnR netlist (set by run_chip_gate.sh, as in the lab flow)
     //    +define+GATE_SDF=\"<sdf file>\"  [+define+GATE_SDF_MIN for the fast (min) corner]
+    //    Direct xrun from the repo root (sim/ch06_exception/chip_gate.f): +define+GATE_SDF_SLOW or
+    //    +define+GATE_SDF_FAST reads the SDF of the GUI PnR run (pnr/ch06_chip/runs/work/out/)
 `ifdef GATE_SDF
   `ifdef GATE_SDF_MIN
     initial $sdf_annotate(`GATE_SDF, dut, , "sdf_annotate.log", "MINIMUM");
   `else
     initial $sdf_annotate(`GATE_SDF, dut, , "sdf_annotate.log", "MAXIMUM");
   `endif
+`elsif GATE_SDF_SLOW
+    initial $sdf_annotate("pnr/ch06_chip/runs/work/out/rv32i_chip_slow.sdf", dut, , "sdf_annotate.log", "MAXIMUM");
+`elsif GATE_SDF_FAST
+    initial $sdf_annotate("pnr/ch06_chip/runs/work/out/rv32i_chip_fast.sdf", dut, , "sdf_annotate.log", "MINIMUM");
 `endif
 
     // -- memories outside the chip (byte address = word address << 2) --
