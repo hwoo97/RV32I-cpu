@@ -9,7 +9,9 @@
 | 합성 ↔ PnR | 위 합성 넷리스트 | `pnr/ch06_chip/runs/<run>/out/rv32i_chip_pnr.v` | [syn2pnr.do](syn2pnr.do) |
 
 - do 파일은 실습과 같은 Conformal 기본 명령 형식입니다. 순서는 `read library` → `read design` → `set system mode lec` → `add compare points -all` → `compare` → `report`입니다.
-- 라이브러리는 실습처럼 **Verilog 시뮬레이션 모델**을 `-both`로 읽습니다. 표준 셀은 slow 모델 하나만 읽습니다. 셀의 논리 기능은 코너와 관계없이 같기 때문입니다. 패드는 `pads_SS_s1vg.v`를 읽습니다. 전원 패드 4종은 이 모델에 없어서 `sim/ch06_exception/pad_power.v`(포트 없는 빈 모듈)로 정의합니다.
+- 라이브러리 읽는 방식이 두 비교에서 다릅니다.
+  - **syn2pnr**: 실습처럼 **Verilog 시뮬레이션 모델**을 `-both`로 읽습니다. 표준 셀은 slow 모델 하나만 읽습니다(셀의 논리 기능은 코너와 관계없이 같음). 패드는 `pads_SS_s1vg.v`를 읽고, 이 모델에 없는 전원 패드 4종은 `sim/ch06_exception/pad_power.v`(포트 없는 빈 모듈)로 정의합니다.
+  - **rtl2syn**: Genus가 매핑에 쓴 **Liberty(`.lib`)**를 읽습니다. Genus가 만드는 LEC do 파일과 같은 방식입니다. 라이브러리에 없는 전원 패드는 `set undefined cell black_box`로 빈 블랙박스로 둡니다. (시뮬레이션 모델로 읽어도 결과는 같았습니다. 1차 실행의 Non-equivalent는 라이브러리 문제가 아니라 아래 `pc[1:0]` 때문이었습니다.)
 - PDK 파일은 저장소에 넣지 않습니다. 실행 폴더의 `lib/`에 `GPDK045_DIR` 안의 파일을 링크합니다.
 
 ## 실행 순서
@@ -63,6 +65,7 @@ bash ec/ch06_chip/run_lec.sh -i --gui rtl2syn   # GUI + 단계별 직접
 - **PASS**: 비교 요약에 `Equivalent`만 있고 `Non-equivalent`, `Abort`가 없습니다.
 - 예상되는 unmapped 항목은 다음과 같습니다.
   - rtl2syn: 합성이 상수로 바꾸거나 지운 레지스터는 golden에만 남습니다. 예를 들어 출력에 쓰이지 않는 비트가 그렇습니다. `-seq_constant`와 함께 "unreachable" 또는 "extra"로 분류되면 정상입니다.
+  - rtl2syn의 **`pc[1:0]` 제약**: RTL에서 `pc[1:0]`은 항상 0입니다. 리셋 값이 0이고, trap·mret 목적지의 하위 2비트가 0이고, `pc + 4`는 하위 비트를 유지하고, 하위 2비트가 0이 아닌 점프·분기 목표는 `jmp_misalign` 예외로 trap 목적지로 바뀌기 때문입니다. Genus는 이를 증명해 두 플립플롭을 지웠지만, LEC는 자기 출력이 되먹임돼야만 성립하는 상수라서 찾지 못합니다(`-seq_constant_feedback`도 효과 없음). 그러면 RTL 쪽 두 비트가 자유 입력이 되어 PC에 의존하는 모든 점(pc, 레지스터 파일, CSR, TRAP)이 다르게 나옵니다. 그래서 `add instance constraints 0 .../pc_reg[0]`, `[1]`을 golden에 넣습니다. **가정**이므로 근거(위 불변식)를 do 파일에 적어 두었습니다. 게이트 수준 시뮬레이션(정렬 안 된 점프를 시험하는 rv32mi `ma_fetch` 포함 PASS)이 같은 동작을 동적으로 뒷받침합니다.
   - syn2pnr: 전원 패드 4개(`P_N_VDD` 등)는 PnR 넷리스트에 없습니다. 핀이 없는 블랙박스라서 비교 점이 생기지 않습니다. CTS·hold 버퍼와 크기가 바뀐 셀은 조합 논리 안에 있으므로 비교 점에 영향이 없습니다.
 - `read design`에서 정의되지 않은 모듈 오류가 나면 해당 모듈 이름을 확인합니다. 라이브러리 모델 경로나 `pad_power.v`가 빠진 경우입니다.
 
@@ -70,10 +73,11 @@ bash ec/ch06_chip/run_lec.sh -i --gui rtl2syn   # GUI + 단계별 직접
 
 | 날짜 | 비교 | Equivalent | Non-equivalent | Abort | 비고 |
 |------|------|------|------|------|------|
-| — | rtl2syn | 미검증 | | | |
-| — | syn2pnr | 미검증 | | | |
+| 2026-11-20 | rtl2syn (1차) | PO 80, DFF 360 | PO 1, DFF 1159 | 0 | `pc[1:0]` 제약 없음 → 원인 분석 |
+| 2026-11-20 | rtl2syn | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** (`pc[1:0]` = 0 제약, 대화형 실행) |
+| 2026-11-20 | syn2pnr | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** |
 
-- 이 PC에서는 가짜 LEC 명령으로 실행 스크립트의 폴더·링크 구성과 판정 흐름만 확인했습니다. 실제 Conformal의 명령 형식, include 처리, 로그의 요약 줄 형식은 **미검증**입니다.
+- 두 비교 모두 교수님 서버의 Conformal에서 실행했습니다. syn2pnr은 일괄 실행, rtl2syn 최종 결과는 대화형으로 같은 명령을 붙여 넣어 얻었습니다. 수정한 `rtl2syn.do`의 일괄 실행은 **미검증**입니다.
 
 ## 정리
 

@@ -87,7 +87,9 @@ if [ -z "$GPDK045_DIR" ]; then
 fi
 CELL_V="$GPDK045_DIR/digital/gsclib045_all_v4.4/gsclib045/verilog/slow_vdd1v0_basicCells.v"
 PAD_V="$GPDK045_DIR/digital/giolib045_v3.5/vlog/pads_SS_s1vg.v"
-for f in "$CELL_V" "$PAD_V"; do
+CELL_LIB="$GPDK045_DIR/digital/gsclib045_all_v4.4/gsclib045/timing/slow_vdd1v0_basicCells.lib"
+PAD_LIB="$GPDK045_DIR/digital/giolib045_v3.5/timing/pads_SS_s1vg.lib"
+for f in "$CELL_V" "$PAD_V" "$CELL_LIB" "$PAD_LIB"; do
     [ -f "$f" ] || { echo "ERROR: model not found: $f"; exit 1; }
 done
 if [ "$GUI" = 1 ] && [ -z "$DISPLAY" ]; then
@@ -100,6 +102,8 @@ setup_run() {
     rm -rf "$1" && mkdir -p "$1/log" "$1/lib" || exit 1
     ln -s "$CELL_V" "$1/lib/slow_vdd1v0_basicCells.v"
     ln -s "$PAD_V" "$1/lib/pads_SS_s1vg.v"
+    ln -s "$CELL_LIB" "$1/lib/slow_vdd1v0_basicCells.lib"
+    ln -s "$PAD_LIB" "$1/lib/pads_SS_s1vg.lib"
     ln -s "$ROOT/sim/ch06_exception/pad_power.v" "$1/lib/pad_power.v"
     ln -s "$ROOT/rtl/ch06_exception" "$1/rtl"
     for h in rv32i_defs.vh mcu_memmap.vh; do ln -s "$ROOT/rtl/ch06_exception/$h" "$1/$h"; done
