@@ -21,9 +21,10 @@
    bash ec/ch06_chip/run_lec.sh --pack
    ```
    → `ec/ch06_chip/out/lec_ch06_chip.tar.gz`가 생깁니다. 안에는 RTL, 두 넷리스트, 이 폴더의 스크립트가 저장소 상대 경로 그대로 들어 있습니다. PDK 파일은 들어 있지 않습니다.
-2. **LEC 서버로 옮기고 풀기**
+2. **LEC 서버로 옮기고 풀기**. 이전에 풀어 둔 폴더가 있으면 먼저 지웁니다(LEC 서버에는 이전 작업 폴더를 남기지 않습니다).
    ```
-   mkdir rv32i_lec ; cd rv32i_lec ; tar xzf lec_ch06_chip.tar.gz
+   cd ~ ; rm -rf rv32i_lec
+   mkdir rv32i_lec ; cd rv32i_lec ; tar xzf ~/lec_ch06_chip.tar.gz
    setenv GPDK045_DIR <GPDK045 폴더>
    ```
 3. **실행**: 아래 일괄 또는 대화형 명령을 씁니다. 같은 저장소 구조이므로 명령도 같습니다.
@@ -75,9 +76,12 @@ bash ec/ch06_chip/run_lec.sh -i --gui rtl2syn   # GUI + 단계별 직접
 |------|------|------|------|------|------|
 | 2026-11-20 | rtl2syn (1차) | PO 80, DFF 360 | PO 1, DFF 1159 | 0 | `pc[1:0]` 제약 없음 → 원인 분석 |
 | 2026-11-20 | rtl2syn | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** (`pc[1:0]` = 0 제약, 대화형 실행) |
+| 2026-11-20 | rtl2syn (일괄 재실행) | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** — 최종 |
+| 2026-11-20 | syn2pnr (일괄 재실행) | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** — 최종 |
 | 2026-11-20 | syn2pnr | **PO 81, DFF 1519 (전부)** | 0 | 0 | **PASS** |
 
-- 두 비교 모두 교수님 서버의 Conformal에서 실행했습니다. syn2pnr은 일괄 실행, rtl2syn 최종 결과는 대화형으로 같은 명령을 붙여 넣어 얻었습니다. 수정한 `rtl2syn.do`의 일괄 실행은 **미검증**입니다.
+- 두 비교 모두 LEC 서버의 Conformal에서 `bash ec/ch06_chip/run_lec.sh` 일괄 실행으로 PASS를 확인했습니다(커밋 fdb5426의 스크립트).
+- 이 결과로 단일 사이클 MCU 칩의 최종 검증(PnR·STA·DRC·게이트 수준 시뮬레이션·LEC)을 모두 마쳤습니다.
 
 ## 정리
 

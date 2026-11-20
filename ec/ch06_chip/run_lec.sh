@@ -6,7 +6,8 @@
 # Pack (school server, after synthesis and PnR): one tar with everything LEC needs
 #   bash ec/ch06_chip/run_lec.sh --pack
 #   -> ec/ch06_chip/out/lec_ch06_chip.tar.gz (RTL, both netlists, these scripts; no PDK files)
-#   On the LEC server: mkdir rv32i_lec; cd rv32i_lec; tar xzf lec_ch06_chip.tar.gz
+#   On the LEC server: cd ~; rm -rf rv32i_lec   (remove the previous run first)
+#                      mkdir rv32i_lec; cd rv32i_lec; tar xzf ~/lec_ch06_chip.tar.gz
 #                      setenv GPDK045_DIR <GPDK045 folder>; bash ec/ch06_chip/run_lec.sh
 #
 # Batch (no window, quits, prints the compare summary):
