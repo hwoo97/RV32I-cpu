@@ -122,3 +122,6 @@ fv/
 # Exception: ch6 trap test images
 !sim/ch06_exception/tests/hex/*.hex
 *.elf
+
+# Job-application portfolio working files (PDF/PPTX with tool screenshots, role notes) - local only
+05_final/private/
