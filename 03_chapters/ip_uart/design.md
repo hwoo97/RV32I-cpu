@@ -141,3 +141,7 @@
 - `rtl/ip_uart/` uart_top.v, uart_regs.v, uart_fifo.v, uart_baud.v, uart_tx.v, uart_rx.v, uart_defs.vh
 - `sim/ip_uart/` uart_fifo_tb.v, uart_top_tb.v, uart_rtl.f, uart_gate.f, uart_probe.tcl, run_uart_tests.py/.sh, run_uart_gate.sh, clean.tcl
 - `syn/ip_uart/`, `pnr/ip_uart/`, `ec/ip_uart/` — 6장 칩 흐름과 같은 구조(STEP, 일괄 + `-i`·`--gui`, README, clean.tcl). 새 출력 폴더는 `tools/clean.tcl`에 등록
+- **실습 폴더 구조 복사본 (2026-11-25 사용자 요청)**: 저장소 구조는 그대로 두고, 학교 서버에서 [tools/uart_lab_tree.sh](../../tools/uart_lab_tree.sh)로 실습 프로젝트와 같은 `<이름>/TOP/{RTL,SIM,SYN,PNR,EC}` 구조의 복사본을 만든다. 복사본 안의 스크립트 경로는 `../RTL`, `../SYN`, `../PNR`로 바뀌고, 공용 BFM `apb_master.vh`는 SIM에 복사된다. EC에는 `uart_defs.vh`와 셀 모델 링크가 미리 생긴다. 원본은 저장소이므로 파일은 저장소에서 고친 뒤 복사본을 다시 만든다
+  - `bash tools/uart_lab_tree.sh ~/PROJ1/uart_ip`: 스크립트와 소스만 복사
+  - `--results`: 저장소 폴더에 이미 만든 툴 출력(합성 mapped·report, PnR 출력, 시뮬 로그)도 함께 복사
+  - `-f`: 기존 TOP을 지우고 다시 만듦
