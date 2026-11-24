@@ -8,15 +8,30 @@
 //   cycle 1 = SETUP (psel=1, penable=0), cycle 2.. = ACCESS (penable=1) until pready = 1,
 //   the transfer completes at the rising edge of the cycle where pready = 1.
 // apb_cycles holds the number of cycles of the last transfer (2 = no wait state).
+// Gate-level runs: `define APB_DRIVE_DELAY <ns> before the include -> psel / paddr / pwdata and
+//   penable change <ns> after the rising edge (the SDC input delay) instead of at the falling edge,
+//   so the netlist gets the input-to-register time the SDC promised. prdata is still sampled 1 ns
+//   after the falling edge of the last ACCESS cycle. Without the define nothing changes.
 integer apb_cycles;
 
 task apb_xfer(input wr, input [31:0] a, input [31:0] d, output [31:0] rd, output err);
     begin
+`ifdef APB_DRIVE_DELAY
+        @(posedge clk); #(`APB_DRIVE_DELAY);
+`else
         @(negedge clk);
+`endif
         psel = 1'b1; penable = 1'b0; pwrite = wr; paddr = a; pwdata = d;     // SETUP
+`ifdef APB_DRIVE_DELAY
+        @(posedge clk); #(`APB_DRIVE_DELAY);
+`else
         @(negedge clk);
+`endif
         penable = 1'b1;                                                     // ACCESS
         apb_cycles = 2;
+`ifdef APB_DRIVE_DELAY
+        @(negedge clk);
+`endif
         #1;
         while (!pready) begin
             @(negedge clk); #1;

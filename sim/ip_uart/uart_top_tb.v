@@ -21,13 +21,11 @@ module uart_top_tb;
     localparam real TCLK = 5.0;                 // 200 MHz
     always #(TCLK / 2) clk = ~clk;
 
-    `include "apb_master.vh"
-
-    reg  bfm_rx = 1'b1;
-    wire uart_tx, irq;
-
     // -- gate-level run (lab style: run_post_max.tcl / run_post_min.tcl copy the PnR netlist and
     //    SDF into this folder and set +define+sdf_post_wst (slow, max) or +define+sdf_post_bst (fast, min))
+    //    In the gate run the APB inputs change 1.5 ns after the rising edge (SDC input delay, 30 %)
+    //    instead of at the falling edge (2.5 ns before the edge is less than the 3.4 ns the SDC gives
+    //    the input-to-register paths: in the first gate run TX FIFO writes were lost).
 `ifdef sdf_post_wst
     `define UART_GATE
     initial $sdf_annotate("uart_top_slow.sdf", dut, , "sdf_post_wst.log", "MAXIMUM");
@@ -35,6 +33,15 @@ module uart_top_tb;
     `define UART_GATE
     initial $sdf_annotate("uart_top_fast.sdf", dut, , "sdf_post_bst.log", "MINIMUM");
 `endif
+`ifdef UART_GATE
+    `define APB_DRIVE_DELAY 1.5
+`endif
+
+    `include "apb_master.vh"
+
+    reg  bfm_rx = 1'b1;
+    wire uart_tx, irq;
+
     // The RX driver changes bfm_rx at any time (real bit times). In the gate run the pin is moved to
     // the next falling clock edge so that the first synchronizer flop sees no setup/hold violation
     // (a real asynchronous input would make the flop go X in the cell model). Delay <= 1 clock.
