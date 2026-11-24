@@ -22,16 +22,21 @@ module uart_top_tb;
     always #(TCLK / 2) clk = ~clk;
 
     // -- gate-level run (lab style: run_post_max.tcl / run_post_min.tcl copy the PnR netlist and
-    //    SDF into this folder and set +define+sdf_post_wst (slow, max) or +define+sdf_post_bst (fast, min))
+    //    SDF into this folder and set +define+sdf_post_wst (slow, max) or +define+sdf_post_bst (fast, min);
+    //    run_pre.tcl uses the Genus netlist and SDF with +define+sdf_gate)
     //    In the gate run the APB inputs change 1.5 ns after the rising edge (SDC input delay, 30 %)
     //    instead of at the falling edge (2.5 ns before the edge is less than the 3.4 ns the SDC gives
-    //    the input-to-register paths: in the first gate run TX FIFO writes were lost).
+    //    the input-to-register paths).
 `ifdef sdf_post_wst
     `define UART_GATE
     initial $sdf_annotate("uart_top_slow.sdf", dut, , "sdf_post_wst.log", "MAXIMUM");
 `elsif sdf_post_bst
     `define UART_GATE
     initial $sdf_annotate("uart_top_fast.sdf", dut, , "sdf_post_bst.log", "MINIMUM");
+`elsif sdf_gate
+    // pre-layout run (run_pre.tcl): Genus netlist + Genus SDF (slow library, no wire delays)
+    `define UART_GATE
+    initial $sdf_annotate("uart_top_delays.sdf", dut, , "sdf_gate.log", "MAXIMUM");
 `endif
 `ifdef UART_GATE
     `define APB_DRIVE_DELAY 1.5

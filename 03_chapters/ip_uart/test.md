@@ -13,6 +13,7 @@
 | 서버 Xcelium, SimVision | `bash sim/ip_uart/run_uart_tests.sh --gui uart_top_tb` |
 | 서버 xrun 직접 (저장소 루트에서) | `xrun -f sim/ip_uart/uart_rtl.f -top uart_top_tb sim/ip_uart/uart_top_tb.v -l uart_top.log` |
 | 서버 게이트 시뮬, 느린 코너 (sim/ip_uart에서, csh) | `source run_post_max.tcl` (PnR 넷리스트·`uart_top_slow.sdf` 복사, `+define+sdf_post_wst`) |
+| 서버 pre-layout 게이트 시뮬 (sim/ip_uart에서, csh) | `source run_pre.tcl` (합성 넷리스트·`uart_top_delays.sdf` 복사, `+define+sdf_gate`) |
 | 서버 게이트 시뮬, 빠른 코너 | `source run_post_min.tcl` (`uart_top_fast.sdf`, `+define+sdf_post_bst`) |
 
 - 클럭 200 MHz(5 ns). 시험은 시간을 줄이려고 `BAUD = 3`(틱 = 4클럭, 1비트 = 64클럭)으로 돈다. 리셋 값(108) 읽기만 따로 확인

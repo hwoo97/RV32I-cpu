@@ -15,6 +15,20 @@
 ## GPDK045 folder (at / on the school server; change this line if it moves). Used by the mmmc view too.
 set GPDK045 /GPDK045
 
+## Cell count log for the portfolio (hold-fix buffer insertion): appends one line per call to
+## reports/cell_count.txt -> instances, BUF*, CLKBUF*, DLY* (gsclib045 delay cells used for hold)
+proc count_cells {tag} {
+  file mkdir reports
+  set n_all [llength [dbGet top.insts]]
+  set n_buf [llength [dbGet -e -p2 top.insts.cell.name BUF*]]
+  set n_cbf [llength [dbGet -e -p2 top.insts.cell.name CLKBUF*]]
+  set n_dly [llength [dbGet -e -p2 top.insts.cell.name DLY*]]
+  set f [open reports/cell_count.txt a]
+  puts $f [format "%-22s insts %5d  BUF %4d  CLKBUF %4d  DLY %4d" $tag $n_all $n_buf $n_cbf $n_dly]
+  close $f
+  puts [format "CELLCOUNT %-22s insts %5d  BUF %4d  CLKBUF %4d  DLY %4d" $tag $n_all $n_buf $n_cbf $n_dly]
+}
+
 ########################################
 # InitDesign (Setup, Floorplan)
 ########################################
@@ -130,6 +144,7 @@ setLayerPreference pinDensityMap -isVisible 0
 
 # Placement Optimization
 place_opt_design
+count_cells after_place_opt
 
 # Early GlobalRoute :: analisys of Congestion and Timing after Placement
 earlyGlobalRoute
@@ -156,6 +171,7 @@ set_ccopt_property target_skew 0.01
 create_ccopt_clock_tree_spec
 # CTS and report all timing WNS, TNS results
 ccopt_design
+count_cells after_cts
 
 # Propagated Clock
 set_interactive_constraint_modes [all_constraint_modes -active]
@@ -170,7 +186,12 @@ report_clock_timing -type skew -nworst 5 > reports/clock/skew.rpt
 
 # Optimization of my design after CTS
 optDesign -postCTS 	; # Setup/DRV concurrently
+# Hold before / after the post-CTS hold fix (portfolio: buffer insertion)
+timeDesign -postCTS -hold -outDir reports/timing/postCTS_hold_before
+count_cells postCTS_before_hold
 optDesign -postCTS -hold ;# Only for hold violation
+count_cells postCTS_after_hold
+timeDesign -postCTS -hold -outDir reports/timing/postCTS_hold_after
 timeDesign -postCTS -outDir reports/timing/postCTS
 
 # If there is no error, Save Design
@@ -200,6 +221,11 @@ setNanoRouteMode -quiet -routeWithTimingDriven true
 setNanoRouteMode -quiet -routeWithSiDriven true
 routeDesign -globalDetail
 
+# Timing right after NanoRoute, before any post-route optimization (portfolio)
+timeDesign -postRoute -outDir reports/timing/route_setup
+timeDesign -postRoute -hold -outDir reports/timing/route_hold
+count_cells after_route
+
 # DRC
 set_verify_drc_mode -disable_rules {} -check_ndr_spacing auto -check_only default -check_same_via_cell true -exclude_pg_net false -ignore_trial_route false -ignore_cell_blockage false -use_min_spacing_on_block_obs auto -report uart_top.drc.rpt -limit 1000
 
@@ -226,10 +252,14 @@ setAnalysisMode -analysisType bcwc -checkType setup
 optDesign -postRoute -setup; # 0 : Optimization and resolve the Setup Violation
 
 setAnalysisMode -analysisType bcwc -checkType hold
+# Hold before / after the post-route hold fix (portfolio: STA -> buffer insertion)
+timeDesign -postRoute -hold -outDir reports/timing/postRoute_hold_before
+count_cells postRoute_before_hold
 optDesign -postRoute -hold; # 1 : Optimization and resolve the Hold Violation
+count_cells postRoute_after_hold
 
-timeDesign -postRoute 	; # Setup time report
-timeDesign -postRoute -hold; # Hold time report
+timeDesign -postRoute -outDir reports/timing/final_setup 	; # Setup time report
+timeDesign -postRoute -hold -outDir reports/timing/final_hold; # Hold time report
 
 # If there is no error, save Design
 saveDesign -rc -def RouteDesign

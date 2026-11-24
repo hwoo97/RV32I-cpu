@@ -14,16 +14,19 @@
 #   bash tools/uart_lab_tree.sh <dest>             scripts and sources only (git-tracked files)
 #   bash tools/uart_lab_tree.sh <dest> --results   also the tool outputs already made in the repo
 #                                                   (syn mapped/report/log, PnR outputs, sim logs)
-#   bash tools/uart_lab_tree.sh <dest> -f          replace an existing <dest>/TOP
+#   bash tools/uart_lab_tree.sh <dest> -f          replace an existing <dest>/TOP (its results are lost)
+#   bash tools/uart_lab_tree.sh <dest> --update    copy the git-tracked files again over an existing
+#                                                   <dest>/TOP (scripts, RTL, testbench); tool results stay
 # Example: bash tools/uart_lab_tree.sh ~/PROJ1/uart_ip
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST=""; RESULTS=0; FORCE=0
+DEST=""; RESULTS=0; FORCE=0; UPDATE=0
 for a in "$@"; do
     case "$a" in
         --results) RESULTS=1 ;;
         -f)        FORCE=1 ;;
+        --update)  UPDATE=1 ;;
         -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
         -*)        echo "ERROR: unknown option $a"; exit 1 ;;
         *)         DEST="$a" ;;
@@ -34,8 +37,12 @@ TOP="$DEST/TOP"
 case "$(cd "$DEST" 2>/dev/null && pwd)/" in
     "$ROOT"/*) echo "ERROR: the destination must be outside the repository"; exit 1 ;;
 esac
-if [ -e "$TOP" ]; then
-    [ "$FORCE" = 1 ] || { echo "ERROR: $TOP exists (use -f to replace it)"; exit 1; }
+if [ "$UPDATE" = 1 ]; then
+    [ -d "$TOP" ] || { echo "ERROR: --update needs an existing $TOP"; exit 1; }
+    [ "$RESULTS" = 0 ] && [ "$FORCE" = 0 ] || { echo "ERROR: --update cannot be used with --results or -f"; exit 1; }
+    echo "update: git-tracked files are copied over $TOP, tool results are kept"
+elif [ -e "$TOP" ]; then
+    [ "$FORCE" = 1 ] || { echo "ERROR: $TOP exists (use -f to replace it, or --update to refresh the scripts only)"; exit 1; }
     rm -rf "$TOP"
 fi
 mkdir -p "$TOP"/{RTL,SIM,SYN,PNR,EC} || exit 1

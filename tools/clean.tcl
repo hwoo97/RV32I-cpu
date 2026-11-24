@@ -47,7 +47,7 @@ proc ::clean::patterns {target chapter} {
             if {$chapter ne ""} { return [list sim/build/*] }
             return [list sim/build xcelium.d INCA_libs *.shm .simvision xrun.history xrun.key xrun.log *.diag \
                          fw_exc*.log chip_rtl*.log chip_gate*.log sdf_annotate.log \
-                         sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log \n                         sim/ip_uart/uart_top_pnr.v sim/ip_uart/*.sdf sim/ip_uart/*.sdf.X sim/ip_uart/*.log]
+                         sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log \n                         sim/ip_uart/uart_top_pnr.v sim/ip_uart/uart_top_syn_final.v sim/ip_uart/*.sdf sim/ip_uart/*.sdf.X sim/ip_uart/*.log]
         }
         syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }

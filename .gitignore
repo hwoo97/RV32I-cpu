@@ -57,6 +57,7 @@ pnr/ip_uart/uart_top_pnr.v
 pnr/ip_uart/uart_top_pnr.sdc
 # Lab-style gate simulation copies the PnR netlist next to the testbench
 sim/ip_uart/uart_top_pnr.v
+sim/ip_uart/uart_top_syn_final.v
 *.sdf.X
 pnr/**/out/
 ec/**/runs/
