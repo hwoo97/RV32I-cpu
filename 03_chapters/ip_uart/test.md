@@ -12,9 +12,16 @@
 | 서버 Xcelium, 일괄 | `bash sim/ip_uart/run_uart_tests.sh` |
 | 서버 Xcelium, SimVision | `bash sim/ip_uart/run_uart_tests.sh --gui uart_top_tb` |
 | 서버 xrun 직접 (저장소 루트에서) | `xrun -f sim/ip_uart/uart_rtl.f -top uart_top_tb sim/ip_uart/uart_top_tb.v -l uart_top.log` |
+| 서버 게이트 시뮬, 느린 코너 (sim/ip_uart에서, csh) | `source run_post_max.tcl` (PnR 넷리스트·`uart_top_slow.sdf` 복사, `+define+sdf_post_wst`) |
+| 서버 게이트 시뮬, 빠른 코너 | `source run_post_min.tcl` (`uart_top_fast.sdf`, `+define+sdf_post_bst`) |
 
 - 클럭 200 MHz(5 ns). 시험은 시간을 줄이려고 `BAUD = 3`(틱 = 4클럭, 1비트 = 64클럭)으로 돈다. 리셋 값(108) 읽기만 따로 확인
 - 판정: 로그의 `PASS:`/`FAIL:` 줄. 실패하면 처음 20개 실패를 시간과 함께 출력
+- 게이트 시뮬(실습 방식): 같은 `uart_top_tb`를 PnR 넷리스트 + 표준 셀 Verilog 모델 + SDF로 돌린다. hex 파일은 필요 없다(테스트벤치가 APB 버스를 직접 구동). 게이트 실행에서만 바뀌는 것
+  - `$sdf_annotate`: 느린 코너 MAXIMUM, 빠른 코너 MINIMUM (로그 `sdf_post_wst.log`·`sdf_post_bst.log`)
+  - `uart_rx` 핀을 다음 클럭 하강 에지로 옮겨 준다(최대 1클럭 지연). 실제 비동기 입력이면 동기화 첫 플립플롭이 setup/hold 검사에 걸려 X가 되기 때문. PC에서 이 경로만 RTL로 켜서 PASS 확인(4,119 검사)
+  - 리셋 해제는 RTL·게이트 모두 하강 에지(25 ns)로 옮김(복구·제거 검사)
+  - 확인: `PASS:` 줄, `Timing violation` 줄 없음, SDF 로그에 `*E` 없음
 
 ## 2. `uart_fifo_tb` — FIFO 단위
 
@@ -45,7 +52,8 @@
 |------|------|------|------|------|
 | 2026-11-24 | PC xsim | uart_fifo_tb | **PASS** (19,756 검사) | |
 | 2026-11-24 | PC xsim | uart_top_tb | **PASS** (4,119 검사, TX 프레임 344) | 버그 모델 보강 뒤 |
-| — | 서버 Xcelium | 두 테스트벤치 | 미검증 | `run_uart_tests.sh` |
+| 2026-11-24 | 서버 Xcelium | uart_fifo_tb, uart_top_tb | **PASS** (19,756 / 4,119 검사, TX 프레임 344) | `run_uart_tests.sh`, 검사 수가 PC xsim과 같음 |
+| 2026-11-24 | 서버 Xcelium SimVision | uart_top_tb | **PASS** (`errors` 0, `checks` 4119, 끝 시각 1,701,588,500 ps) | 실습 방식 `run_function.tcl`, 파형 확인 |
 
 ## 5. 버그 모델
 

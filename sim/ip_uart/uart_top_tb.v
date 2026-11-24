@@ -26,11 +26,30 @@ module uart_top_tb;
     reg  bfm_rx = 1'b1;
     wire uart_tx, irq;
 
+    // -- gate-level run (lab style: run_post_max.tcl / run_post_min.tcl copy the PnR netlist and
+    //    SDF into this folder and set +define+sdf_post_wst (slow, max) or +define+sdf_post_bst (fast, min))
+`ifdef sdf_post_wst
+    `define UART_GATE
+    initial $sdf_annotate("uart_top_slow.sdf", dut, , "sdf_post_wst.log", "MAXIMUM");
+`elsif sdf_post_bst
+    `define UART_GATE
+    initial $sdf_annotate("uart_top_fast.sdf", dut, , "sdf_post_bst.log", "MINIMUM");
+`endif
+    // The RX driver changes bfm_rx at any time (real bit times). In the gate run the pin is moved to
+    // the next falling clock edge so that the first synchronizer flop sees no setup/hold violation
+    // (a real asynchronous input would make the flop go X in the cell model). Delay <= 1 clock.
+`ifdef UART_GATE
+    reg  rx_pin = 1'b1;
+    always @(negedge clk) rx_pin <= bfm_rx;
+`else
+    wire rx_pin = bfm_rx;
+`endif
+
     uart_top dut (
         .pclk(clk), .presetn(presetn),
         .psel(psel), .penable(penable), .pwrite(pwrite), .paddr(paddr[11:0]), .pwdata(pwdata),
         .prdata(prdata), .pready(pready), .pslverr(pslverr),
-        .irq(irq), .uart_rx(bfm_rx), .uart_tx(uart_tx)
+        .irq(irq), .uart_rx(rx_pin), .uart_tx(uart_tx)
     );
 
     // ---------------------------------------------------------------- checking helpers
@@ -209,7 +228,7 @@ module uart_top_tb;
     integer   isr_seen;
 
     initial begin
-        #23 presetn = 1;
+        #25 presetn = 1;                                      // release at a falling edge (reset recovery/removal in the gate run)
         wait_clocks(2);
 
         // ---- 1 reset values and PSLVERR

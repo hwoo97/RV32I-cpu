@@ -20,6 +20,7 @@
 # Targets
 #   sim : sim/build/ (xsim, xrun batch/GUI builds) and xrun files left at the repo root
 #         (xcelium.d, INCA_libs, *.shm, .simvision, xrun.history, xrun.key, xrun.log, *.diag)
+#         lab-style gate run (sim/ip_uart): copied netlist / SDF, compiled SDF, logs
 #   syn : syn/<chapter>/runs/ and genus.cmd*, genus.log*, fv/ at the repo root
 #         lab-style flows (syn/ip_uart): log, report, unmapped, mapped next to the scripts
 #   pnr : pnr/<chapter>/runs/ and innovus.cmd*, innovus.log* at the repo root
@@ -45,7 +46,7 @@ proc ::clean::patterns {target chapter} {
             if {$chapter ne ""} { return [list sim/build/*] }
             return [list sim/build xcelium.d INCA_libs *.shm .simvision xrun.history xrun.key xrun.log *.diag \
                          fw_exc*.log chip_rtl*.log chip_gate*.log sdf_annotate.log \
-                         sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log]
+                         sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log \n                         sim/ip_uart/uart_top_pnr.v sim/ip_uart/*.sdf sim/ip_uart/*.sdf.X sim/ip_uart/*.log]
         }
         syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
