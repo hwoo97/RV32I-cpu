@@ -22,7 +22,7 @@
   - `uart_rx` 핀을 다음 클럭 하강 에지로 옮겨 준다(최대 1클럭 지연). 실제 비동기 입력이면 동기화 첫 플립플롭이 setup/hold 검사에 걸려 X가 되기 때문. PC에서 이 경로만 RTL로 켜서 PASS 확인(4,119 검사)
   - 리셋 해제는 RTL·게이트 모두 하강 에지(25 ns)로 옮김(복구·제거 검사)
   - APB 입력을 상승 에지 뒤 1.5 ns(SDC 입력 지연)에 바꾼다(`APB_DRIVE_DELAY`, 공용 `apb_master.vh`에 선택 define 추가). 하강 에지 구동은 SDC가 약속한 3.4 ns보다 짧은 2.5 ns만 남겨, 첫 느린 코너 실행에서 TX FIFO 쓰기가 일부 비트만 저장됨(아래 6절). 트랜잭션 사이 쉬는 사이클이 1개 늘어 폴링 읽기 수가 줄므로 검사 수가 RTL보다 적음(PC에서 이 경로를 RTL로 켜면 3,517 검사 PASS)
-  - 확인: `PASS:` 줄, `Timing violation` 줄 없음, SDF 로그에 `*E` 없음
+  - 확인: `PASS:` 줄, `Timing violation` 줄 없음, SDF 로그에 `*E` 없음, xmelab SDF statistics `Annotated` 경로 지연·타이밍 검사 거의 100 %(`SDFINF` 경고 없음)
 
 ## 2. `uart_fifo_tb` — FIFO 단위
 
@@ -82,5 +82,8 @@
 - 증상: 느린 코너에서 `FAIL: uart_top_tb (412 errors in 4108 checks)`. 처음 20개가 모두 test 2 `TX data`, 첫 프레임 `XX`, 이후 값은 기댓값과 직전 값의 비트가 섞임. `Timing violation` 0, SDF 경고 12·오류 0
 - 원인(추정): 테스트벤치가 APB 입력을 하강 에지에서 바꿔 `penable` → TX FIFO 쓰기 경로에 2.5 ns만 남음. PnR은 SDC(입력 지연 1.5 ns → 3.4 ns 예산)로 이 경로를 slack +0.100으로 맞춤(default 그룹 최악). 데이터가 다음 에지의 hold 창보다도 늦게 도착하면 셀 모델은 위반 없이 이전 값을 잡으므로, 같은 FIFO 칸의 이전 값과 새 값이 비트마다 섞임
 - 해결: 게이트 실행에서만 BFM이 상승 에지 뒤 1.5 ns에 구동 (회로는 그대로). 서버 재실행으로 확인 필요(미검증)
+- **정정 (같은 날, 재실행 로그):** 이 실행은 SDF가 거의 적용되지 않은 상태였다. xmelab `*W,SDFINF: Instance u_tx (u_txf, u_regs, u_rxf, u_baud, u_rx) not found` 12개, `Annotated = 1.32 % (50/3796)` 경로 지연, `0.00 % (0/2969)` 타이밍 검사. 원인은 PnR 넷리스트를 `saveNetlist -flat`으로 써서 계층(u_tx …)이 없어졌는데 SDF는 계층 이름으로 쓰였기 때문. 타이밍 검사가 적용되지 않았으니 `Timing violation` 0도 의미가 없고, 위 원인 추정은 확인되지 않은 것으로 둔다
+  - 해결: all.tcl을 계층 넷리스트(`saveNetlist uart_top_pnr.v`)로 바꿈. APB 구동 시점 수정은 SDC 가정에 맞춘 것이라 그대로 둔다
+  - 게이트 실행 확인 항목에 추가: SDF statistics의 `Annotated`가 경로 지연·타이밍 검사 모두 100 %에 가까운지, `SDFINF` 경고가 없는지
 - 무작위 시험(9)만 실패, RX 바이트가 비어 있음 → 테스트벤치의 fork 두 갈래가 같은 반복 변수 `i`를 써서 서로 덮어씀 → 갈래마다 변수를 따로(`ti`, `ri`). RTL 문제 아님
 - RX 타임아웃 기준: 처음에는 "시작 비트 확인"에서만 다시 셌는데, 시험을 쓰면서 "마지막 바이트가 들어온 뒤 문자 4개"가 맞다고 보고 바이트 수신(push)에서도 다시 세게 고침 (16550과 같은 뜻). design.md 6절 수정

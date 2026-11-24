@@ -292,8 +292,11 @@ saveDesign -rc -def ChipFinish
 #####################
 # Write Out Files
 
-# Netlist file (flat) for gate-level simulation and LEC
-saveNetlist -flat uart_top_pnr.v
+# Netlist file (hierarchical) for gate-level simulation and LEC.
+# The design keeps its hierarchy (Genus auto_ungroup none) and write_sdf writes hierarchical
+# instance names (u_tx/...), so the netlist must keep the hierarchy too: with -flat the SDF
+# scopes u_tx, u_rx, ... are not found and almost nothing is annotated (first gate run: 1.32 %).
+saveNetlist uart_top_pnr.v
 
 # SDF for gate-level simulation: slow (setup side) and fast (hold side)
 write_sdf -view FUNC_SS_WORST uart_top_slow.sdf
