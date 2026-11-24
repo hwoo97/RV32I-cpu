@@ -64,6 +64,7 @@ ec/**/out/
 # Lab-style LEC (ec/ip_uart): log folder and links to the PDK cell model
 ec/**/log/
 ec/**/lib/
+ec/ip_uart/uart_defs.vh
 *.jou
 *.str
 

@@ -51,7 +51,7 @@ proc ::clean::patterns {target chapter} {
         }
         syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
-        ec  { return [concat [list ec/$ch/runs ec/$ch/out ec/$ch/log ec/$ch/lib ec/$ch/lec.log* ec/$ch/lec.cmd*] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
+        ec  { return [concat [list ec/$ch/runs ec/$ch/out ec/$ch/log ec/$ch/lib ec/$ch/uart_defs.vh ec/$ch/lec.log* ec/$ch/lec.cmd*] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
         default { error "unknown target '$target' (use sim, syn, pnr, ec, all)" }
     }
 }

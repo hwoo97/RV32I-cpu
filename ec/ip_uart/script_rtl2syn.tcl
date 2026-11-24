@@ -1,16 +1,18 @@
 // UART IP - Conformal LEC: RTL (golden) vs Genus netlist (revised)
 // Lab style (same commands as the lab script_rtl2syn.tcl). Run in ec/ip_uart on the LEC server:
 //   lec -xl -dofile script_rtl2syn.tcl      (or start lec -xl and paste the lines one by one)
-// Before the first run (see README): mkdir log ; link the cell model into lib/ (PDK, not committed)
+// Before the first run (see README): mkdir log ; link the cell model into lib/ (PDK, not committed) ;
+//   link uart_defs.vh into this folder (read design has no include-folder option: -incdir is
+//   not legal, the `include file is looked up in the run folder, as in the ch06 LEC)
 // Changes from the lab script: paths, one cell model (slow only - the same cell functions as fast,
-//   no pads in the block), include folder for uart_defs.vh, flatten options as in the Genus dofile.
+//   no pads in the block), uart_defs.vh linked into the run folder, flatten options as in the Genus dofile.
 
 set log file ./log/rtl2syn.log -replace
 
 read library -verilog -both \
 	./lib/slow_vdd1v0_basicCells.v
 
-read design -verilog -golden -incdir ../../rtl/ip_uart \
+read design -verilog -golden \
 	../../rtl/ip_uart/uart_fifo.v \
 	../../rtl/ip_uart/uart_baud.v \
 	../../rtl/ip_uart/uart_tx.v \
