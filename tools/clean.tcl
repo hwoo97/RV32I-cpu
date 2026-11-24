@@ -26,6 +26,7 @@
 #   pnr : pnr/<chapter>/runs/ and innovus.cmd*, innovus.log* at the repo root
 #         lab-style flows (pnr/ip_uart): saved designs (*.dat), reports, outputs next to the scripts
 #   ec  : ec/<chapter>/runs/, ec/<chapter>/out/ (LEC tar) and lec log files at the repo root
+#         lab-style LEC (ec/ip_uart): log/, lib/ (links to the PDK cell model), lec.log*
 #
 # Safety
 #   - Only paths inside the repository are deleted, never the repository root itself
@@ -50,7 +51,7 @@ proc ::clean::patterns {target chapter} {
         }
         syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
-        ec  { return [concat [list ec/$ch/runs ec/$ch/out] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
+        ec  { return [concat [list ec/$ch/runs ec/$ch/out ec/$ch/log ec/$ch/lib ec/$ch/lec.log* ec/$ch/lec.cmd*] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
         default { error "unknown target '$target' (use sim, syn, pnr, ec, all)" }
     }
 }

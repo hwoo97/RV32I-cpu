@@ -61,6 +61,9 @@ sim/ip_uart/uart_top_pnr.v
 pnr/**/out/
 ec/**/runs/
 ec/**/out/
+# Lab-style LEC (ec/ip_uart): log folder and links to the PDK cell model
+ec/**/log/
+ec/**/lib/
 *.jou
 *.str
 

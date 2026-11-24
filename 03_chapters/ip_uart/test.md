@@ -55,6 +55,8 @@
 | 2026-11-24 | PC xsim | uart_top_tb | **PASS** (4,119 검사, TX 프레임 344) | 버그 모델 보강 뒤 |
 | 2026-11-24 | 서버 Xcelium | uart_fifo_tb, uart_top_tb | **PASS** (19,756 / 4,119 검사, TX 프레임 344) | `run_uart_tests.sh`, 검사 수가 PC xsim과 같음 |
 | 2026-11-24 | 서버 Xcelium SimVision | uart_top_tb | **PASS** (`errors` 0, `checks` 4119, 끝 시각 1,701,588,500 ps) | 실습 방식 `run_function.tcl`, 파형 확인 |
+| 2026-11-25 | 서버 Xcelium, 게이트 느린 코너 | uart_top_tb | **PASS** (3,517 검사, TX 프레임 344, 끝 시각 1,703,528,500 ps) | `run_post_max.tcl`, 계층 넷리스트 + slow SDF. SDF 경로 지연 100 %(3,796), 타이밍 검사 87.54 %(2,599/2,969), SDFINF 없음, `Timing violation` 0 |
+| 2026-11-25 | 서버 Xcelium, 게이트 빠른 코너 | uart_top_tb | **PASS** (3,517 검사, TX 프레임 344, 끝 시각 1,703,528,500 ps) | `run_post_min.tcl`, fast SDF(MINIMUM). SDF 경로 지연 100 %, 타이밍 검사 87.54 %, `Timing violation` 0 |
 
 ## 5. 버그 모델
 
