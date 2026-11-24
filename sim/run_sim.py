@@ -3,6 +3,7 @@
     python sim/run_sim.py <testbench module> <Verilog files...> [--gui] [--timeout sec]
 
 e.g. python sim/run_sim.py cnt_tb rtl/ch00_sample/cnt.v sim/ch00_sample/cnt_tb.v
+     --incdir <folder> adds an `include folder (the folders of the source files are always searched).
 
 - Build output goes to sim/build/<testbench>/ (git-ignored).
 - Passes if the simulation output contains "PASS" and no "FAIL"/"ERROR".
@@ -33,12 +34,13 @@ def main():
     parser.add_argument("files", nargs="+", help="Verilog files")
     parser.add_argument("--gui", action="store_true", help="open the waveform window")
     parser.add_argument("--timeout", type=int, default=300, help="time limit per step (s)")
+    parser.add_argument("--incdir", action="append", default=[], help="extra `include folder (repeatable)")
     args = parser.parse_args()
 
     files = [os.path.abspath(f) for f in args.files]
     # `include files are searched in the folder of each source file
     incdirs = []
-    for d in dict.fromkeys(os.path.dirname(f) for f in files):
+    for d in dict.fromkeys([os.path.dirname(f) for f in files] + [os.path.abspath(i) for i in args.incdir]):
         incdirs += ["-i", d]
     build = os.path.join(ROOT, "sim", "build", args.top)
     shutil.rmtree(build, ignore_errors=True)

@@ -47,6 +47,14 @@ pnr/**/report*/
 *.stats.dat
 syn/**/out/
 pnr/**/runs/
+# Lab-style flows (syn/ip_uart, pnr/ip_uart) write next to the scripts
+syn/**/cds_syn_runtime
+pnr/**/checkDesign/
+pnr/**/run1/
+pnr/**/timingReports/
+pnr/**/*.checkPlace
+pnr/ip_uart/uart_top_pnr.v
+pnr/ip_uart/uart_top_pnr.sdc
 pnr/**/out/
 ec/**/runs/
 ec/**/out/

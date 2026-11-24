@@ -1,0 +1,15 @@
+#!/bin/csh -f
+## UART IP synthesis, lab style (same as the lab run_synthesis)
+## Run in this folder (syn/ip_uart):  ./run_synthesis
+## Interactive: start genus here, then  source ./script/uart_top_45nm.tcl  (or paste it part by part)
+mkdir -p log report unmapped mapped
+
+## Start Time
+echo -n "Syn Start : " > cds_syn_runtime
+date >> cds_syn_runtime
+
+genus -f ./script/uart_top_45nm.tcl -log ./log/all.log
+
+## End Time
+echo -n "Syn End   : " >> cds_syn_runtime
+date >> cds_syn_runtime

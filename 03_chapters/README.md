@@ -12,6 +12,7 @@
 | ⑦ | `ch11_memory`, `ch12_cache_tlb` | 11·12 캐시·Sv32 MMU |
 | ⑧ | `ch13_multicore` | 13 멀티스레드·멀티코어 |
 | ⑨ | `ch14b_io` | 14 나머지 — PS/2·VGA·I2C 등 |
+| 곁가지 | `ip_uart` | UART IP 단독 (RTL → 블록 PnR → LEC), 6장 뒤 7장 전 |
 
 > 교재 1~3장·15장은 건너뛴다 (`ch00_sample`은 환경 점검용).
 

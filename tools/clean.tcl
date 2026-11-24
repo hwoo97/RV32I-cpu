@@ -21,7 +21,9 @@
 #   sim : sim/build/ (xsim, xrun batch/GUI builds) and xrun files left at the repo root
 #         (xcelium.d, INCA_libs, *.shm, .simvision, xrun.history, xrun.key, xrun.log, *.diag)
 #   syn : syn/<chapter>/runs/ and genus.cmd*, genus.log*, fv/ at the repo root
+#         lab-style flows (syn/ip_uart): log, report, unmapped, mapped next to the scripts
 #   pnr : pnr/<chapter>/runs/ and innovus.cmd*, innovus.log* at the repo root
+#         lab-style flows (pnr/ip_uart): saved designs (*.dat), reports, outputs next to the scripts
 #   ec  : ec/<chapter>/runs/, ec/<chapter>/out/ (LEC tar) and lec log files at the repo root
 #
 # Safety
@@ -45,11 +47,33 @@ proc ::clean::patterns {target chapter} {
                          fw_exc*.log chip_rtl*.log chip_gate*.log sdf_annotate.log \
                          sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log]
         }
-        syn { return [concat [list syn/$ch/runs] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
-        pnr { return [concat [list pnr/$ch/runs] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
+        syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
+        pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }
         ec  { return [concat [list ec/$ch/runs ec/$ch/out] [expr {$chapter eq "" ? {lec.log* lec.cmd*} : {}}]] }
         default { error "unknown target '$target' (use sim, syn, pnr, ec, all)" }
     }
+}
+
+# Lab-style flows write next to the scripts (syn/<ch>/log, report, ...; pnr/<ch>/*.dat, reports, ...)
+# Only folders listed here are touched; script and constraint files are git-tracked and never deleted.
+proc ::clean::lab_syn {ch} {
+    set out {}
+    foreach d {ip_uart} {
+        if {$ch ne "*" && $ch ne $d} { continue }
+        foreach p {log report unmapped mapped cds_syn_runtime genus.cmd* genus.log* fv} { lappend out syn/$d/$p }
+    }
+    return $out
+}
+proc ::clean::lab_pnr {ch} {
+    set out {}
+    foreach d {ip_uart} {
+        if {$ch ne "*" && $ch ne $d} { continue }
+        foreach p {*.dat checkDesign reports timingReports run1 *.rpt *.checkPlace uart_top_pnr.v uart_top_pnr.sdc
+                   *.sdf *.lef *.def *.gds innovus.cmd* innovus.log* innovus.logv* *.enc* .timing_file*} {
+            lappend out pnr/$d/$p
+        }
+    }
+    return $out
 }
 
 proc ::clean::tracked {path} {
