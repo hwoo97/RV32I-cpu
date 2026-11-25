@@ -64,6 +64,8 @@ tempus.log*
 # Lab-style gate simulation copies the PnR netlist next to the testbench
 sim/ip_uart/uart_top_pnr.v
 sim/ip_uart/uart_top_syn_final.v
+sim/ch06_uartip/rv32i_chip_syn_final.v
+sim/ch06_uartip/rv32i_chip_pnr.v
 *.sdf.X
 pnr/**/out/
 ec/**/runs/

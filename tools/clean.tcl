@@ -49,7 +49,7 @@ proc ::clean::patterns {target chapter} {
                          fw_exc*.log chip_rtl*.log chip_gate*.log sdf_annotate.log \
                          sim/*/xcelium.d sim/*/*.shm sim/*/xrun.history sim/*/xrun.log \
                          sim/ip_uart/uart_top_pnr.v sim/ip_uart/uart_top_syn_final.v sim/ip_uart/*.sdf sim/ip_uart/*.sdf.X sim/ip_uart/*.log \
-                         sim/ch06_uartip/*.log]
+                         sim/ch06_uartip/*.log sim/ch06_uartip/rv32i_chip_syn_final.v sim/ch06_uartip/rv32i_chip_pnr.v sim/ch06_uartip/*.sdf sim/ch06_uartip/*.sdf.X]
         }
         syn { return [concat [list syn/$ch/runs] [lab_syn $ch] [expr {$chapter eq "" ? {genus.cmd* genus.log* fv} : {}}]] }
         pnr { return [concat [list pnr/$ch/runs] [lab_pnr $ch] [expr {$chapter eq "" ? {innovus.cmd* innovus.log* innovus.logv*} : {}}]] }

@@ -35,6 +35,17 @@
 ## 3. 실습 형식 흐름 (학교 서버, 저장소 안에서 실행)
 | 단계 | 파일 | 상태 |
 |------|------|------|
-| RTL 시뮬 | `sim/ch06_uartip/run_function.tcl` (기본 프로그램 `uart_irq.hex`) | 작성, 서버 미실행 |
-| 합성 | `syn/ch06_uartip/run_synthesis`, `script/rv32i_chip_45nm.tcl`, `cons/rv32i_chip.sdc` | 작성, 서버 미실행 |
-| Pre-layout, PnR, Post-layout, STA·ECO, LEC | (다음 단계) | — |
+| RTL 시뮬 | `sim/ch06_uartip/run_function.tcl` (기본 프로그램 `uart_irq.hex`) | **PASS** (2026-11-26) |
+| 합성 | `syn/ch06_uartip/run_synthesis`, `script/rv32i_chip_45nm.tcl`, `cons/rv32i_chip.sdc` | **MET** (2026-11-26) |
+| Pre-layout | `sim/ch06_uartip/run_pre.tcl` (합성 넷리스트 + Genus SDF, 13 ns) | 작성, 서버 미실행 |
+| PnR, Post-layout, STA·ECO, LEC | (다음 단계) | — |
+
+### 결과 (학교 서버)
+| 날짜 | 단계 | 결과 |
+|------|------|------|
+| 2026-11-26 | RTL 시뮬 (Xcelium, PDK 패드 모델) | **PASS** `uart_irq.hex` — 1,589 사이클, 예외 5, 인터럽트 2, 끝 15,930 ns (PC xsim 1,590 사이클로 표시, 사이클 세는 시점 차이로 보임) |
+| 2026-11-26 | 합성 (Genus, slow, 10.4 ns) | **MET, slack 0 ps** — `IMEM_DATA[23]` → 입력 패드 → 레지스터 파일 읽기 → ALU(주소 계산) → `DADDR[6]` (vclk, 입력 지연 3.0 + 데이터 경로 4.0 + 출력 지연 3.3 + 불확실성 0.1 = 10.4) |
+| 2026-11-26 | 면적 | MCU(`u_mcu`) 셀 **34,840.9 µm²** (9,686셀) — UART IP(`u_uart`) 5,393.0 µm²(1,365셀), 레지스터 파일 14,902.7, ALU 5,232.6, CSR 4,029.8. 칩 전체 2,871,651.9 µm²는 패드 포함 |
+
+- UART IP 없는 칩(프로젝트 흐름, 같은 10.4 ns)은 MCU 30,531.7 µm²(8,599셀)였다. 차이 +4,309 µm²(+1,087셀)는 UART IP(5,393)에서 빠진 `apb_uart` 몫을 뺀 값으로 보임(코어 쪽 최적화 차이 포함, 정확한 분해는 미확인)
+- 최악 경로는 예전과 같은 종류(명령어 핀 → 데이터 주소 핀, 메모리 왕복 예산 그대로)라 UART IP가 임계 경로에 들어오지 않음
