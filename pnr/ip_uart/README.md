@@ -49,3 +49,21 @@ Innovus 프롬프트에서 `source all.tcl` (전체) 또는 구역별로 붙여 
 - setup 최악은 입력 → 출력 조합 경로(APB 읽기, default 그룹)로 합성 때와 같은 경로로 보이며, 플립플롭 사이 경로는 2.5 ns 여유가 있음. 최악 경로 상세는 미확인
 - 핀: 왼쪽 49개·오른쪽 37개가 겹치지 않고 놓임 (레이아웃 화면으로 확인)
 - 미확인: 출력 파일(`uart_top_pnr.v`, SDF 2개, `uart_top.lef`) 생성 여부
+
+### 재실행 (2026-11-25, 리포트 추가된 all.tcl)
+최종 결과는 첫 실행과 같습니다(setup +0.100, hold +0.008, 밀도 71.466 %). 추가한 리포트 결과는 아래와 같습니다.
+
+| 시점 | setup WNS | hold WNS | 비고 |
+|------|------:|------:|------|
+| postCTS, hold 수정 전 → 후 | — | +0.009 → +0.009 | 위반 없음, 삽입 0 |
+| NanoRoute 직후 (OCV, CPPR) | +0.107 | +0.001 | 위반 0, DRV 0 |
+| postRoute, hold 수정 전 → 후 (bcwc) | +0.100 | +0.008 → +0.008 | 위반 없음, 삽입 0 |
+
+| 단계 (`reports/cell_count.txt`) | 인스턴스 | BUF | CLKBUF | DLY |
+|------|------:|------:|------:|------:|
+| place_opt 뒤 | 1,422 | 56 | 3 | 0 |
+| CTS 뒤 | 1,449 | 60 | 31 | 0 |
+| postCTS hold 수정 전·후, Route 뒤, postRoute hold 수정 전·후 | 1,448 | 56 | 31 | 0 |
+
+- 버퍼가 늘어난 곳은 CTS(클럭 버퍼 +28)뿐이고, 두 번의 hold 수정은 위반이 없어 아무것도 넣지 않았습니다.
+- NanoRoute 직후 `timeDesign -postRoute`는 분석 모드가 OCV가 아니면 `IMPOPT-7027`로 멈춥니다. 그래서 바로 앞에 `setAnalysisMode -analysisType onChipVariation -cppr both`를 넣었습니다. 첫 재실행에서는 이 줄 없이 오류가 났고, `PostCTSopt`를 복원해 배선과 측정만 다시 했습니다.

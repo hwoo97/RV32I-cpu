@@ -222,6 +222,9 @@ setNanoRouteMode -quiet -routeWithSiDriven true
 routeDesign -globalDetail
 
 # Timing right after NanoRoute, before any post-route optimization (portfolio)
+# Post-route timeDesign stops with IMPOPT-7027 unless the analysis mode is OCV (the lab order sets
+# OCV only before optDesign -postRoute -drv below), so set it here first.
+setAnalysisMode -analysisType onChipVariation -cppr both
 timeDesign -postRoute -outDir reports/timing/route_setup
 timeDesign -postRoute -hold -outDir reports/timing/route_hold
 count_cells after_route
