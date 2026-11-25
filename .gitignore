@@ -143,6 +143,7 @@ fv/
 !fw/hex/*.hex
 # Exception: ch6 trap test images
 !sim/ch06_exception/tests/hex/*.hex
+!sim/ch06_uartip/tests/hex/*.hex
 *.elf
 
 # Job-application portfolio working files (PDF/PPTX with tool screenshots, role notes) - local only
