@@ -8,10 +8,13 @@
 #   TLA*     : latches             - the design has no latches; a latch would be a coding error
 #   DFFS*    : flops with set      - a reset-to-1 flop is built from a reset flop and inverters
 #   SDFF*    : scan flops          - no scan chain in this project
+#   BUFX2    : the only double-height cell of gsclib045 (LEF SITE CoreSiteDouble). The PnR rows are
+#              CoreSite only, so an instance of it cannot be placed legally (IMPSP-365). The first
+#              synthesis of this chip used it (2026-11-26); the PnR dont_use only stops new ones.
 # FILL* and DFFRH* stay allowed (fillers are never chosen by synthesis anyway)
 #####################################################################
 
-foreach pattern {ANTENNA* DLY* HOLD* TIE* TLA* DFFS* SDFF*} {
+foreach pattern {ANTENNA* DLY* HOLD* TIE* TLA* DFFS* SDFF* BUFX2} {
     set cells [get_lib_cells -quiet */$pattern]
     if {[llength $cells] > 0} {
         set_dont_use $cells

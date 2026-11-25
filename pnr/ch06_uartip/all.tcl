@@ -64,6 +64,15 @@ set init_pwr_net VDD
 init_design
 
 set DOUBLE_CELLS [dont_use_double_height]
+## The netlist itself must not use them (the PnR dont_use only stops new ones). First run 2026-11-26:
+## IMPSP-365 right after init -> BUFX2 added to the synthesis dont_use list (syn/ch06_uartip/cons).
+set DOUBLE_INSTS {}
+foreach i [dbGet top.insts] {
+  if {[lsearch -exact $DOUBLE_CELLS [dbGet $i.cell.name]] >= 0} { lappend DOUBLE_INSTS "[dbGet $i.name]([dbGet $i.cell.name])" }
+}
+if {[llength $DOUBLE_INSTS] > 0} {
+  error "[llength $DOUBLE_INSTS] netlist instances use double-height cells, e.g. [lrange $DOUBLE_INSTS 0 4] - synthesize again with the dont_use list"
+}
 
 ## Check Design
 checkDesign -io -netlist -physicalLibrary -powerGround -tieHilo -timingLibrary -spef -floorplan -place -outdir checkDesign
@@ -130,6 +139,9 @@ proc place_pads_in_ring {iofile} {
       for {set m 0} {$m < $k} {incr m} {
         set name [lindex $names [expr {$i + $m}]]
         set pos [expr {$a0 + ($m + 1) * ($a1 - $a0) / ($k + 1.0)}]
+        # on a 0.1 um grid (a multiple of the manufacturing grid): the even split gave positions off
+        # the grid -> IMPFP-7251 'IO pad not on Grid' on the first run (2026-11-26)
+        set pos [format %.1f [expr {round($pos * 10.0) / 10.0}]]
         if {$axis == 0} {
           placeInstance $name $pos [lindex $pb 1] $orient -fixed
         } else {
