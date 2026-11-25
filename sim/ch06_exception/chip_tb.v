@@ -95,10 +95,28 @@ module chip_tb;
                      TRAP, IRQ_TAKEN, BUS_ERR);
 
     initial begin cycles = 0; n_exc = 0; n_irq = 0; end
+    // Counts of the observation pins TRAP / IRQ_TAKEN (1-cycle pulses, combinational from the core).
+    // RTL: sampled at the falling edge. Gate run with SDF: the TRAP path goes through the memory round
+    // trip (pc -> pads -> memory -> pads -> decode) and settles late in the cycle, after the falling edge
+    // (the first pre-layout run counted 14 exceptions instead of 5). The SDC constrains these pins to
+    // the next rising edge, so the gate run samples them there (the value of the cycle that just ended).
+`ifdef GATE_SDF
+  `define CHIP_TB_COUNT_POSEDGE
+`elsif GATE_SDF_SLOW
+  `define CHIP_TB_COUNT_POSEDGE
+`elsif GATE_SDF_FAST
+  `define CHIP_TB_COUNT_POSEDGE
+`endif
+`ifdef CHIP_TB_COUNT_POSEDGE
+    always @(posedge clk) if (rst_n) begin
+`else
     always @(negedge clk) if (rst_n) begin
-        cycles = cycles + 1;
+`endif
         if (TRAP === 1'b1)      n_exc = n_exc + 1;
         if (IRQ_TAKEN === 1'b1) n_irq = n_irq + 1;
+    end
+    always @(negedge clk) if (rst_n) begin
+        cycles = cycles + 1;
         if (sim_done) begin
             if (sim_result == 32'd1)
                 $display("PASS: %0s (%0d cycles, %0d exceptions, %0d interrupts)", hex, cycles, n_exc, n_irq);

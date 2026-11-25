@@ -37,7 +37,7 @@
 |------|------|------|
 | RTL 시뮬 | `sim/ch06_uartip/run_function.tcl` (기본 프로그램 `uart_irq.hex`) | **PASS** (2026-11-26) |
 | 합성 | `syn/ch06_uartip/run_synthesis`, `script/rv32i_chip_45nm.tcl`, `cons/rv32i_chip.sdc` | **MET** (2026-11-26) |
-| Pre-layout | `sim/ch06_uartip/run_pre.tcl` (합성 넷리스트 + Genus SDF, 13 ns) | 작성, 서버 미실행 |
+| Pre-layout | `sim/ch06_uartip/run_pre.tcl` (합성 넷리스트 + Genus SDF, 13 ns) | **PASS** (2026-11-26) |
 | PnR, Post-layout, STA·ECO, LEC | (다음 단계) | — |
 
 ### 결과 (학교 서버)
@@ -47,5 +47,8 @@
 | 2026-11-26 | 합성 (Genus, slow, 10.4 ns) | **MET, slack 0 ps** — `IMEM_DATA[23]` → 입력 패드 → 레지스터 파일 읽기 → ALU(주소 계산) → `DADDR[6]` (vclk, 입력 지연 3.0 + 데이터 경로 4.0 + 출력 지연 3.3 + 불확실성 0.1 = 10.4) |
 | 2026-11-26 | 면적 | MCU(`u_mcu`) 셀 **34,840.9 µm²** (9,686셀) — UART IP(`u_uart`) 5,393.0 µm²(1,365셀), 레지스터 파일 14,902.7, ALU 5,232.6, CSR 4,029.8. 칩 전체 2,871,651.9 µm²는 패드 포함 |
 
+| 2026-11-26 | Pre-layout (Genus SDF slow, 13 ns) | **PASS** `uart_irq.hex` — 1,589 사이클(RTL과 같음), 인터럽트 2, `Timing violation` 0, SDFINF 0. SDF 경로 지연 99.75 %(26,271/26,337), 타이밍 검사 58.07 %(setuphold 6,329/6,331 = 99.97 %, recovery 97.23 %, $hold·$width 0 % — Genus SDF에 없는 검사). 예외 수가 14로 나옴(RTL 5) → 아래 |
+
+- **Pre-layout 예외 수 14 (RTL 5):** 결과 판정(TOHOST)과 사이클 수·인터럽트 수는 RTL과 같다. 예외 수는 `chip_tb`가 관찰 핀 `TRAP`을 **하강 에지**(13 ns 클럭의 6.5 ns)에서 세는데, `TRAP`은 pc → 패드 → 메모리 → 패드 → 디코드를 거치는 조합 출력이라 게이트 지연이 들어가면 하강 에지 뒤에야 안정된다. 그래서 중간 값이 세어진 것으로 본다(`IRQ_TAKEN`은 짧은 경로라 2로 맞음). SDC는 이 핀을 다음 상승 에지 기준(출력 지연 0)으로 제약하므로, 게이트 실행(`GATE_SDF*` 정의)에서는 **상승 에지**에서 세도록 `sim/ch06_exception/chip_tb.v`를 고쳤다(RTL 실행은 그대로, PC 회귀 같은 값). 재실행으로 5가 나오는지 확인 필요(미검증)
 - UART IP 없는 칩(프로젝트 흐름, 같은 10.4 ns)은 MCU 30,531.7 µm²(8,599셀)였다. 차이 +4,309 µm²(+1,087셀)는 UART IP(5,393)에서 빠진 `apb_uart` 몫을 뺀 값으로 보임(코어 쪽 최적화 차이 포함, 정확한 분해는 미확인)
 - 최악 경로는 예전과 같은 종류(명령어 핀 → 데이터 주소 핀, 메모리 왕복 예산 그대로)라 UART IP가 임계 경로에 들어오지 않음
