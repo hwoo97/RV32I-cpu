@@ -9,8 +9,10 @@
 #   DFFS*    : flops with set      - a reset-to-1 flop is built from a reset flop and inverters
 #   SDFF*    : scan flops          - no scan chain in this project
 #   BUFX2    : the only double-height cell of gsclib045 (LEF SITE CoreSiteDouble). The PnR rows are
-#              CoreSite only, so an instance of it cannot be placed legally (IMPSP-365). The first
-#              synthesis of this chip used it (2026-11-26); the PnR dont_use only stops new ones.
+#              CoreSite only, so an instance of it cannot be placed legally (IMPSP-365); the PnR
+#              dont_use only stops new ones. Added after IMPSP-365 in the first PnR init
+#              (2026-11-26); the synthesis result did not change (same area), so that netlist
+#              probably had no BUFX2 either - kept as a guard.
 # FILL* and DFFRH* stay allowed (fillers are never chosen by synthesis anyway)
 #####################################################################
 

@@ -65,7 +65,8 @@ init_design
 
 set DOUBLE_CELLS [dont_use_double_height]
 ## The netlist itself must not use them (the PnR dont_use only stops new ones). First run 2026-11-26:
-## IMPSP-365 right after init -> BUFX2 added to the synthesis dont_use list (syn/ch06_uartip/cons).
+## IMPSP-365 right after init (cause not found yet; BUFX2 added to the synthesis dont_use as a guard,
+## the synthesis result stayed the same). If this check stops, it names the instances.
 set DOUBLE_INSTS {}
 foreach i [dbGet top.insts] {
   if {[lsearch -exact $DOUBLE_CELLS [dbGet $i.cell.name]] >= 0} { lappend DOUBLE_INSTS "[dbGet $i.name]([dbGet $i.cell.name])" }
