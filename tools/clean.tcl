@@ -70,11 +70,13 @@ proc ::clean::lab_syn {ch} {
 }
 proc ::clean::lab_pnr {ch} {
     set out {}
-    foreach d {ip_uart} {
+    foreach d {ip_uart ch06_uartip} {
         if {$ch ne "*" && $ch ne $d} { continue }
         foreach p {*.dat checkDesign reports timingReports run1 *.rpt *.checkPlace uart_top_pnr.v uart_top_pnr.sdc
                    *.sdf *.lef *.def *.gds innovus.cmd* innovus.log* innovus.logv* *.enc* .timing_file*
-                   innovus.eco tempus.cmd* tempus.log* tempus.logv* tempus_reports uart_top_pnr_eco.v uart_top_pnr_eco.sdc} {
+                   innovus.eco tempus.cmd* tempus.log* tempus.logv* tempus_reports uart_top_pnr_eco.v uart_top_pnr_eco.sdc
+                   rv32i_chip_pnr.v rv32i_chip_pnr.sdc InitDesign PowerPlan PlaceOpt PostCTSopt RouteDesign
+                   RouteDesign_for_ECO ChipFinish} {
             lappend out pnr/$d/$p
         }
     }
