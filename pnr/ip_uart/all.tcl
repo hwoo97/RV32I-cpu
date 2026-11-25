@@ -267,6 +267,11 @@ timeDesign -postRoute -hold -outDir reports/timing/final_hold; # Hold time repor
 # If there is no error, save Design
 saveDesign -rc -def RouteDesign
 
+# Design for the Tempus sign-off STA and the ECO (tempus.tcl, eco.tcl): analysis mode single as in
+# the lab ECO flow. The flow below (power, filler, write out) does not depend on this mode.
+setAnalysisMode -analysisType single
+saveDesign -rc -def RouteDesign_for_ECO
+
 
 ##################
 # Power Analysis

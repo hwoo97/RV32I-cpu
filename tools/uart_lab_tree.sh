@@ -4,7 +4,7 @@
 #   <dest>/TOP/RTL   uart_*.v, uart_defs.vh
 #   <dest>/TOP/SIM   testbenches, apb_master.vh, run_function.tcl, run_post_max/min.tcl
 #   <dest>/TOP/SYN   run_synthesis, script/, cons/
-#   <dest>/TOP/PNR   all.tcl, uart_top.mmmc.view, uart_top_func.sdc
+#   <dest>/TOP/PNR   all.tcl, uart_top.mmmc.view, uart_top_func.sdc, tempus.tcl, eco.tcl
 #   <dest>/TOP/EC    script_rtl2syn.tcl, script_syn2pnr.tcl (+ links uart_defs.vh, lib/)
 #
 # The repository is not changed: this makes a copy (run it on the school server, after git pull).
@@ -99,6 +99,7 @@ Run order (each step in its own folder):
   1. RTL sim    cd SIM ; source run_function.tcl        (SimVision: run -> PASS line)
   2. Synthesis  cd SYN ; ./run_synthesis                (or genus, source ./script/uart_top_45nm.tcl)
   3. PnR        cd PNR ; innovus, source all.tcl
+  3b. STA / ECO cd PNR ; tempus (tempus.tcl Practice 0; ECO demo: Practice 1 -> innovus, source eco.tcl -> Practice 2)
   4. Gate sim   cd SIM ; source run_post_max.tcl / run_post_min.tcl
   5. LEC        tar czf ~/lec_uart.tar.gz TOP (from the folder above TOP), on the LEC server:
                 cd TOP/EC ; lec -xl -dofile script_rtl2syn.tcl / script_syn2pnr.tcl

@@ -55,6 +55,12 @@ pnr/**/timingReports/
 pnr/**/*.checkPlace
 pnr/ip_uart/uart_top_pnr.v
 pnr/ip_uart/uart_top_pnr.sdc
+pnr/ip_uart/uart_top_pnr_eco.v
+pnr/ip_uart/uart_top_pnr_eco.sdc
+pnr/**/innovus.eco
+pnr/**/tempus_reports/
+tempus.cmd*
+tempus.log*
 # Lab-style gate simulation copies the PnR netlist next to the testbench
 sim/ip_uart/uart_top_pnr.v
 sim/ip_uart/uart_top_syn_final.v

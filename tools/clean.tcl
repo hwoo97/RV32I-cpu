@@ -71,7 +71,8 @@ proc ::clean::lab_pnr {ch} {
     foreach d {ip_uart} {
         if {$ch ne "*" && $ch ne $d} { continue }
         foreach p {*.dat checkDesign reports timingReports run1 *.rpt *.checkPlace uart_top_pnr.v uart_top_pnr.sdc
-                   *.sdf *.lef *.def *.gds innovus.cmd* innovus.log* innovus.logv* *.enc* .timing_file*} {
+                   *.sdf *.lef *.def *.gds innovus.cmd* innovus.log* innovus.logv* *.enc* .timing_file*
+                   innovus.eco tempus.cmd* tempus.log* tempus.logv* tempus_reports uart_top_pnr_eco.v uart_top_pnr_eco.sdc} {
             lappend out pnr/$d/$p
         }
     }

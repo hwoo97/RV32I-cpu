@@ -7,6 +7,8 @@
 | `all.tcl` | InitDesign → PowerPlan → Placement → CTS → Route → Power → Chip Finish → Write Out |
 | `uart_top.mmmc.view` | 실습 mmmc와 같음(BEST/WORST RC, FF/SS 라이브러리), 패드 라이브러리 없음, SDC = `uart_top_func.sdc` |
 | `uart_top_func.sdc` | 목표 5 ns(200 MHz), 합성 SDC와 주기·입출력 지연만 다름 |
+| `tempus.tcl` | 실습 Tempus 스크립트 형식: Practice 0 사인오프 STA, Practice 1 ECO(hold 수정 → `innovus.eco`), Practice 2 ECO 뒤 STA·SDF |
+| `eco.tcl` | 실습 6_ECO.tcl 형식: `innovus.eco` 반영 → single 모드 최적화 → 타이밍·DRC·연결 → Filler → 출력(`_eco` 이름) |
 
 ## 실습 all.tcl과 다른 점
 | 실습(칩) | UART IP(블록) |
@@ -25,6 +27,14 @@ cd pnr/ip_uart
 innovus
 ```
 Innovus 프롬프트에서 `source all.tcl` (전체) 또는 구역별로 붙여 넣으며 GUI에서 확인. 중간 저장(`InitDesign`, `PowerPlan`, `PlaceOpt`, `PostCTSopt`, `RouteDesign`, `ChipFinish`)에서 `restoreDesign <이름>.dat uart_top`으로 다시 시작
+
+## 사인오프 STA · ECO (실습 방식, Tempus)
+1. `all.tcl`이 Route 뒤에 분석 모드를 `single`로 바꾸고 `RouteDesign_for_ECO`를 저장한다. 이미 PnR을 끝냈다면 Innovus에서 `restoreDesign RouteDesign.dat uart_top` → `setAnalysisMode -analysisType single` → `saveDesign -rc -def RouteDesign_for_ECO`.
+2. `tempus` 실행 → `tempus.tcl` Practice 0 붙여 넣기: `report_analysis_coverage` 위반 0이면 실제 설계는 ECO가 필요 없음.
+3. **ECO 시연** (실제 설계는 위반이 없음): Practice 1에서 이 Tempus 세션에만 hold uncertainty를 0.05 → 0.07 ns로 올려 위반 몇 개를 만들고, `add_repeater`로 고친 뒤 `write_eco`로 `innovus.eco`를 쓴다.
+4. Innovus에서 `source eco.tcl`: ECO 반영(`*FE_ECO*` 셀) → 최적화 → 타이밍·DRC·연결 확인 → `ChipFinish_after_ECO`. 출력은 `_eco` 이름이라 실제 결과는 그대로.
+5. Tempus Practice 2: ECO 뒤 설계 STA.
+- 미검증: 서버 Tempus에서 아직 실행하지 않음(`read_design`·`add_repeater`·`write_eco` 형식은 실습 스크립트와 같음)
 
 ## 확인할 것
 | 단계 | 볼 것 |
