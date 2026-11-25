@@ -58,6 +58,7 @@
 | 2026-11-24 | 서버 Xcelium SimVision | uart_top_tb | **PASS** (`errors` 0, `checks` 4119, 끝 시각 1,701,588,500 ps) | 실습 방식 `run_function.tcl`, 파형 확인 |
 | 2026-11-25 | 서버 Xcelium, 게이트 느린 코너 | uart_top_tb | **PASS** (3,517 검사, TX 프레임 344, 끝 시각 1,703,528,500 ps) | `run_post_max.tcl`, 계층 넷리스트 + slow SDF. SDF 경로 지연 100 %(3,796), 타이밍 검사 87.54 %(2,599/2,969), SDFINF 없음, `Timing violation` 0 |
 | 2026-11-25 | 서버 Xcelium, 게이트 빠른 코너 | uart_top_tb | **PASS** (3,517 검사, TX 프레임 344, 끝 시각 1,703,528,500 ps) | `run_post_min.tcl`, fast SDF(MINIMUM). SDF 경로 지연 100 %, 타이밍 검사 87.54 %, `Timing violation` 0 |
+| 2026-11-26 | 서버 Xcelium, Pre-layout 게이트 | uart_top_tb | **PASS** (3,517 검사, TX 프레임 344) | `run_pre.tcl`, 합성 넷리스트 + Genus SDF(MAXIMUM). SDF 경로 지연 99.02 %(3,653/3,689), 타이밍 검사 56.28 %(데이터 setuphold 1,504/1,504 = 100 %, recovery 167/185, $hold 0/185·$width 0/1,095는 Genus SDF에 없음), SDFINF 0, `Timing violation` 0. RTL과 비교: 0x65 프레임 시작 비트에서 uart_tx가 clk ↑ 뒤 0.49 ns(RTL 0) |
 
 ## 5. 버그 모델
 

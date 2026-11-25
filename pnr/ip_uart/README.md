@@ -34,7 +34,9 @@ Innovus 프롬프트에서 `source all.tcl` (전체) 또는 구역별로 붙여 
 3. **ECO 시연** (실제 설계는 위반이 없음): Practice 1에서 이 Tempus 세션에만 hold uncertainty를 0.05 → 0.07 ns로 올려 위반 몇 개를 만들고, `add_repeater`로 고친 뒤 `write_eco`로 `innovus.eco`를 쓴다.
 4. Innovus에서 `source eco.tcl`: ECO 반영(`*FE_ECO*` 셀) → 최적화 → 타이밍·DRC·연결 확인 → `ChipFinish_after_ECO`. 출력은 `_eco` 이름이라 실제 결과는 그대로.
 5. Tempus Practice 2: ECO 뒤 설계 STA.
-- 미검증: 서버 Tempus에서 아직 실행하지 않음(`read_design`·`add_repeater`·`write_eco` 형식은 실습 스크립트와 같음)
+- 실행 결과 (2026-11-26, Practice 0): Tempus 분석 모드 `single` 확인. 배선 RC 적용 real net 1,544/1,544 = 100 %. `report_analysis_coverage` 위반 0(Setup 743·Hold 743 모두 Met, Recovery/Removal 167 Met·18 Untested, External delay 25 Met·11 Untested, Pulse width 910 Met·185 Untested, Data check 18 Untested). 최악 slack setup +0.100 ns, hold +0.001 ns(Innovus bcwc +0.008, OCV +0.001)
+- 결론: 실제 설계는 ECO 불필요. Practice 1·2와 `eco.tcl`은 위반이 생겼을 때 쓰는 절차로 둠
+- 미확인: Untested 항목이 모두 상수 때문인지(`report_analysis_coverage -verbose untested -exclude_untested const`), hold 최악 경로의 시작·끝점
 
 ## 확인할 것
 | 단계 | 볼 것 |
