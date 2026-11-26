@@ -93,10 +93,15 @@ set OUTER_GAP   40      ;# gap between the IO ring and the outer power ring
 set FP_MARGIN [expr {$CORE_MARGIN - $PAD_DEPTH}]
 floorPlan -site CoreSite -d $DIE $DIE $FP_MARGIN $FP_MARGIN $FP_MARGIN $FP_MARGIN
 
-## Move IO Cells (PADVDD, PADVSS) into the pad ring
-#  The lab placed each power pad by hand (placeInstance padNN x y R270 ...). Here the AREAIO power pads
-#  are put in their empty slots of the IO file order: evenly between the ring pads before and after
-#  them on the same side, same orientation.
+## Place every pad of the ring again on whole um (PADVDD, PADVSS included)
+#  The lab placed each power pad by hand (placeInstance padNN x y R270 ...). The IO file has no offsets,
+#  so init spreads the pads evenly at fractional positions (e.g. y = 1463.505) and the gaps between
+#  them are not whole um: the narrowest IO filler is padIORINGFEED1 (1 um), so 0.3 um gaps stay open
+#  after addIoFiller (seen on the second run, 2026-11-26, next to every pad), and checkDesign already
+#  reports IMPFP-7251 'IO pad not on Grid' right after init. Here each side is placed again in the IO
+#  file order, evenly between the corners, every pad at a whole-um offset from the corner, so all
+#  gaps are whole um. The AREAIO power pads (left in the core by floorPlan) get the same orientation
+#  and depth as the ring pads of their side.
 proc io_side_order {iofile} {
   set order [dict create]
   set side ""
@@ -119,46 +124,75 @@ proc in_pad_ring {name} {
   lassign [inst_box $name] x1 y1 x2 y2
   return [expr {$x1 < 1 || $y1 < 1 || $x2 > $DIE - 1 || $y2 > $DIE - 1}]
 }
-proc place_pads_in_ring {iofile} {
+proc place_ring_pads {iofile} {
   set moved 0
+  lassign [inst_box CORNER_BL] blx1 bly1 blx2 bly2
+  lassign [inst_box CORNER_TR] trx1 try1 trx2 try2
   dict for {side names} [io_side_order $iofile] {
     set axis [expr {$side eq "top" || $side eq "bottom" ? 0 : 1}]
-    set n [llength $names]
-    set i 0
-    while {$i < $n} {
-      if {[in_pad_ring [lindex $names $i]]} { incr i; continue }
-      set j $i
-      while {$j + 1 < $n && ![in_pad_ring [lindex $names [expr {$j + 1}]]]} { incr j }
-      if {$i == 0 || $j == $n - 1} { error "pad [lindex $names $i] ($side) has no ring pad on both sides" }
-      set prev [lindex $names [expr {$i - 1}]]
-      set next [lindex $names [expr {$j + 1}]]
-      set pb [inst_box $prev]
-      set a0 [lindex $pb $axis]
-      set a1 [lindex [inst_box $next] $axis]
-      set k [expr {$j - $i + 1}]
-      set orient [dbGet [dbGet -p top.insts.name $prev].orient]
-      for {set m 0} {$m < $k} {incr m} {
-        set name [lindex $names [expr {$i + $m}]]
-        # offset from the previous ring pad in whole um: the ring pads keep their own fraction
-        # (e.g. y = 2176.555), so the gaps on both sides stay whole um and padIORINGFEED1 (1 um,
-        # the narrowest IO filler) can close them. An absolute 0.1 um snap (first fix, 2026-11-26)
-        # left gaps like 0.245 um that no IO filler fits -> open IO ring.
-        set off [expr {round(($m + 1) * ($a1 - $a0) / ($k + 1.0))}]
-        set pos [format %.3f [expr {$a0 + $off}]]
-        if {$axis == 0} {
-          placeInstance $name $pos [lindex $pb 1] $orient -fixed
-        } else {
-          placeInstance $name [lindex $pb 0] $pos $orient -fixed
-        }
-        puts "pad moved into the ring: $name ($side) [inst_box $name] $orient"
-        incr moved
-      }
-      set i [expr {$j + 1}]
+    set start [expr {$axis == 0 ? $blx2 : $bly2}]
+    set end   [expr {$axis == 0 ? $trx1 : $try1}]
+    # a pad already in the ring gives the orientation, the depth position and the direction of the order
+    set ring {}
+    foreach nm $names { if {[in_pad_ring $nm]} { lappend ring $nm } }
+    if {[llength $ring] < 2} { error "side $side has fewer than 2 pads in the ring" }
+    set ref [lindex $ring 0]
+    set rb [inst_box $ref]
+    set orient [dbGet [dbGet -p top.insts.name $ref].orient]
+    if {[lindex $rb $axis] > [lindex [inst_box [lindex $ring end]] $axis]} { set names [lreverse $names] }
+    set widths {}
+    set total 0.0
+    foreach nm $names {
+      set w [lindex [concat {*}[dbGet [dbGet -p top.insts.name $nm].cell.size]] 0]
+      lappend widths $w
+      set total [expr {$total + $w}]
     }
+    set gap [expr {($end - $start - $total) / ([llength $names] + 1.0)}]
+    if {$gap < 1} { error "side $side: pads do not fit between the corners (gap $gap)" }
+    set used 0.0
+    foreach nm $names w $widths {
+      set pos [format %.3f [expr {$start + round($used + $gap)}]]
+      set used [expr {$pos - $start + $w}]
+      if {$axis == 0} {
+        placeInstance $nm $pos [lindex $rb 1] $orient -fixed
+      } else {
+        placeInstance $nm [lindex $rb 0] $pos $orient -fixed
+      }
+      incr moved
+    }
+    puts "side $side: [llength $names] pads from $start to $end, gap about [format %.2f $gap] um"
   }
   return $moved
 }
-puts "pads moved into the ring: [place_pads_in_ring rv32i_chip.io]"
+## Gaps in the IO ring after addIoFiller (pads, corners, fillers side by side; 0 expected)
+proc ring_gaps {} {
+  global DIE
+  set bad 0
+  foreach side {bottom top left right} {
+    set L {}
+    foreach i [dbGet top.insts] {
+      lassign [concat {*}[dbGet $i.box]] x1 y1 x2 y2
+      switch $side {
+        bottom { if {$y1 < 1}        { lappend L [list $x1 $x2 [dbGet $i.name]] } }
+        top    { if {$y2 > $DIE - 1} { lappend L [list $x1 $x2 [dbGet $i.name]] } }
+        left   { if {$x1 < 1}        { lappend L [list $y1 $y2 [dbGet $i.name]] } }
+        right  { if {$x2 > $DIE - 1} { lappend L [list $y1 $y2 [dbGet $i.name]] } }
+      }
+    }
+    set L [lsort -real -index 0 $L]
+    for {set k 1} {$k < [llength $L]} {incr k} {
+      set e0 [lindex $L [expr {$k - 1}] 1]
+      set s1 [lindex $L $k 0]
+      if {abs($s1 - $e0) > 0.001} {
+        incr bad
+        if {$bad <= 10} { puts "IO ring gap ($side): [lindex $L [expr {$k - 1}] 2] ends $e0, [lindex $L $k 2] starts $s1" }
+      }
+    }
+  }
+  puts "IO ring gaps: $bad"
+  return $bad
+}
+puts "pads placed again: [place_ring_pads rv32i_chip.io]"
 
 ## Rows again over the whole core box (the first floorPlan left out the band the power pads took)
 deleteRow -all
@@ -181,6 +215,7 @@ addIoFiller -cell padIORINGFEED60 padIORINGFEED10 padIORINGFEED5 padIORINGFEED3 
 addIoFiller -cell padIORINGFEED60 padIORINGFEED10 padIORINGFEED5 padIORINGFEED3 padIORINGFEED1 -prefix FILLER -side s
 addIoFiller -cell padIORINGFEED60 padIORINGFEED10 padIORINGFEED5 padIORINGFEED3 padIORINGFEED1 -prefix FILLER -side w
 addIoFiller -cell padIORINGFEED60 padIORINGFEED10 padIORINGFEED5 padIORINGFEED3 padIORINGFEED1 -prefix FILLER -side e
+ring_gaps
 
 # Verify Timing
 report_analysis_views

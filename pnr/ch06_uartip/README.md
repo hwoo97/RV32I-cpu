@@ -14,7 +14,7 @@
 |------|------|------|------|
 | Init | — | 이중 높이 셀(`CoreSiteDouble`) dont_use | 행이 `CoreSite`뿐이라 checkPlace TechSite 위반 95개가 났던 것 |
 | Floorplan | 코어 이용률 0.7, 여백 1200 | 다이 3700 µm, 코어 1400 µm(가운데) | 패드 197개로 다이가 정해짐. 코어가 패드에서 멀면 입력 패드 넷 max_tran 위반 |
-| 전원 패드 | `placeInstance padNN x y`를 손으로 | IO 파일 순서의 빈 자리에 자동 배치(같은 변, 앞뒤 패드 사이) | AREAIO 전원 패드가 코어 안에 놓이는 문제 |
+| 패드 배치 | `placeInstance padNN x y`(전원 패드)를 손으로 | 변마다 모든 패드를 IO 파일 순서로 코너 사이에 고르게, 코너에서 **정수 µm** 위치에 다시 놓음(전원 패드 포함). `addIoFiller` 뒤 `ring_gaps`로 링 틈 수 출력 | AREAIO 전원 패드가 코어 안에 놓이는 문제. IO 파일 기본 배치는 좌표 끝수(예 .505)로 패드 사이 틈이 0.3 µm 정도 남아 가장 좁은 필러(1 µm)로 못 메움 |
 | PowerPlan | 안쪽 링, 스트라이프, 바깥 링, 패드 연결, 링 사이 스트라이프 | 같은 순서 + 단계마다 전원 검사(`reports/03_pgcheck.txt`), 마지막 `editTrim` | 스트라이프 끝 76개 dangling을 정리 |
 | Placement | — | `addTieHiLo` | 합성에서 TIE 셀을 쓰지 않음 |
 | CTS | 목표 스큐 0.01 | 강한 클럭 셀, trunk Metal7-8, `update_io_latency false`, 목표 스큐 0.05, 가상 클럭 지연 = 측정한 삽입 지연 | 기본값 실행에서 hold −1.134 ns(2,216 경로) |
@@ -32,7 +32,7 @@ Innovus 프롬프트에서 `source all.tcl`(전체) 또는 구역별로 붙여 �
 ## 확인할 것
 | 단계 | 볼 것 |
 |------|------|
-| Floorplan | 로그 `pads moved into the ring`, `core box = 1150 1150 2550 2550` |
+| Floorplan | 로그 `side <변>: N pads ... gap about ...`(4줄), `pads placed again: 197`, `core box = 1150 1150 2550 2550`, `IO ring gaps: 0` |
 | PowerPlan | `reports/03_pgcheck.txt` 단계마다 opens 없음·DRC 0 |
 | CTS | 로그 `vclk latency (FUNC_S / FUNC_F)`, `reports/clock/skew_groups.rpt` |
 | 각 timeDesign | `reports/timing/<단계>/` setup·hold WNS ≥ 0 |
