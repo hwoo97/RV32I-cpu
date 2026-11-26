@@ -13,7 +13,7 @@
 | 구역 | 실습 (cmsdk_mcu) | 이 칩 | 이유 |
 |------|------|------|------|
 | Init | — | 이중 높이 셀(`CoreSiteDouble`) dont_use | 행이 `CoreSite`뿐이라 checkPlace TechSite 위반 95개가 났던 것 |
-| Floorplan | 코어 이용률 0.7, 여백 1200 | 다이 3700 µm, 코어 1400 µm(가운데) | 패드 197개로 다이가 정해짐. 코어가 패드에서 멀면 입력 패드 넷 max_tran 위반 |
+| Floorplan | 코어 이용률 0.7, 여백 1200 | 다이 3705 µm(19 µm 배수: 배치 격자 0.2·0.19와 정수 µm), 코어 약 1400 µm(가운데) | 패드 197개로 다이가 정해짐. 코어가 패드에서 멀면 입력 패드 넷 max_tran 위반 |
 | 패드 배치 | `placeInstance padNN x y`(전원 패드)를 손으로 | 변마다 모든 패드를 IO 파일 순서로 코너 사이에 고르게, 코너에서 **정수 µm** 위치에 다시 놓음(전원 패드 포함). `addIoFiller` 뒤 `ring_gaps`로 링 틈 수 출력 | AREAIO 전원 패드가 코어 안에 놓이는 문제. IO 파일 기본 배치는 좌표 끝수(예 .505)로 패드 사이 틈이 0.3 µm 정도 남아 가장 좁은 필러(1 µm)로 못 메움 |
 | PowerPlan | 안쪽 링, 스트라이프, 바깥 링, 패드 연결, 링 사이 스트라이프 | 같은 순서 + 단계마다 전원 검사(`reports/03_pgcheck.txt`), 마지막 `editTrim` | 스트라이프 끝 76개 dangling을 정리 |
 | Placement | — | `addTieHiLo` | 합성에서 TIE 셀을 쓰지 않음 |

@@ -79,12 +79,15 @@ if {[llength $DOUBLE_INSTS] > 0} {
 checkDesign -io -netlist -physicalLibrary -powerGround -tieHilo -timingLibrary -spef -floorplan -place -outdir checkDesign
 
 ##################################################
-## Floorplan :: die 3700 um (set by the 197 pads), core 1400 um square in the middle
+## Floorplan :: die 3705 um (set by the 197 pads), core about 1400 um square in the middle
 ##################################################
 #  The logic is about 35,000 um^2: a 1400 um core is ~2 % used. A larger core (1000 um margin) put
 #  the core 1.1 mm from the pads and a few input pad nets had max_tran violations (the pad driver is
 #  fixed and there are no rows between pad and core for buffers); 1400 um keeps them about 0.9 mm away.
-set DIE         3700
+#  The die side is a multiple of 19 um (both 0.2 x 0.19 placement grids and whole um): with 3700 the
+#  die height was snapped to 3700.06 (0.19 grid), the top corners sat at 3460.06 and a 0.06 um gap
+#  that no IO filler fits stayed next to them (2026-11-26).
+set DIE         3705
 set CORE_MARGIN 1150
 set PAD_DEPTH   240     ;# pad cell depth
 set OUTER_GAP   40      ;# gap between the IO ring and the outer power ring
@@ -149,10 +152,14 @@ proc place_ring_pads {iofile} {
     }
     set gap [expr {($end - $start - $total) / ([llength $names] + 1.0)}]
     if {$gap < 1} { error "side $side: pads do not fit between the corners (gap $gap)" }
-    set used 0.0
+    # round the exact even position, not the step: rounding each step added the rounding error of the
+    # gap once per pad (2026-11-26: the last pad of a side ended 4 um inside the corner)
+    set k 0
+    set sumw 0.0
     foreach nm $names w $widths {
-      set pos [format %.3f [expr {$start + round($used + $gap)}]]
-      set used [expr {$pos - $start + $w}]
+      incr k
+      set pos [format %.3f [expr {$start + round($k * $gap + $sumw)}]]
+      set sumw [expr {$sumw + $w}]
       if {$axis == 0} {
         placeInstance $nm $pos [lindex $rb 1] $orient -fixed
       } else {
@@ -171,6 +178,8 @@ proc ring_gaps {} {
   foreach side {bottom top left right} {
     set L {}
     foreach i [dbGet top.insts] {
+      # standard cells are still unplaced at (0, 0) here: leave them out
+      if {[dbGet $i.cell.baseClass] eq "core" || [dbGet $i.pStatus] eq "unplaced"} continue
       lassign [concat {*}[dbGet $i.box]] x1 y1 x2 y2
       switch $side {
         bottom { if {$y1 < 1}        { lappend L [list $x1 $x2 [dbGet $i.name]] } }
