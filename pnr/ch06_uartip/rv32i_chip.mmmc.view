@@ -3,6 +3,9 @@
 # cmsdk_mcu.mmmc.view, only paths and names changed)
 #  $GPDK045 is set in all.tcl before init_design (GPDK045 folder at / on the school server)
 #  Pad libraries added to the library sets (pads_FF_s1vg / pads_SS_s1vg).
+#  RC corners without the lab -cap_table: that table (cln28hpl_...capTbl) is for a 28 nm process and
+#  gave the ~0.9 mm pad-to-core nets max_tran up to 1.154 ns (limit 0.28, 97 nets) and IO setup
+#  -0.818 ns after CTS (2026-11-26). Only the gpdk045 QRC tech file is used, as in pnr/ch06_chip.
 #  Constraints: ./rv32i_chip_func.sdc (13 ns target). Two constraint modes with the same SDC
 #  (FUNC_S for the slow view, FUNC_F for the fast view) instead of the lab's one FUNC mode: after CTS
 #  the virtual clock vclk gets the clock insertion delay measured in each view (slow and fast differ).
@@ -13,7 +16,6 @@
 ########################################
 
 create_rc_corner -name BEST \
-   -cap_table "$GPDK045/digital/gsclib045_all_v4.4/captable/cln28hpl_1p10m+alrdl_5x2yu2yz_typical.capTbl" \
    -preRoute_res {1.0} \
    -preRoute_cap {1.0} \
    -preRoute_clkres {0.0} \
@@ -27,7 +29,6 @@ create_rc_corner -name BEST \
    -qx_tech_file $GPDK045/digital/gsclib045_all_v4.4/gsclib045/qrc/qx/gpdk045.tch
 
 create_rc_corner -name WORST \
-   -cap_table "$GPDK045/digital/gsclib045_all_v4.4/captable/cln28hpl_1p10m+alrdl_5x2yu2yz_typical.capTbl" \
    -preRoute_res {1.0} \
    -preRoute_cap {1.0} \
    -preRoute_clkres {0.0} \

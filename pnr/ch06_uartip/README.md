@@ -5,7 +5,7 @@
 | 파일 | 내용 |
 |------|------|
 | `all.tcl` | InitDesign → PowerPlan → Placement → CTS → Route → Power → Chip Finish → Write Out |
-| `rv32i_chip.mmmc.view` | 실습 mmmc와 같은 BEST/WORST RC, FF/SS 라이브러리 + 패드 라이브러리. 제약 모드 2개(`FUNC_S`, `FUNC_F`, 같은 SDC) |
+| `rv32i_chip.mmmc.view` | 실습 mmmc와 같은 BEST/WORST RC(단 `-cap_table` 뺌, 45 nm QRC tech 파일만), FF/SS 라이브러리 + 패드 라이브러리. 제약 모드 2개(`FUNC_S`, `FUNC_F`, 같은 SDC) |
 | `rv32i_chip_func.sdc` | 13 ns 목표. 합성 SDC와 주기만 다름(가상 클럭 `vclk`, 메모리 핀 예산 같음) |
 | `rv32i_chip.io` | 패드 순서. `pnr/ch06_chip/rv32i_chip.io`와 같음(칩 핀이 바뀌지 않음) |
 
@@ -19,6 +19,7 @@
 | Placement | — | `addTieHiLo` | 합성에서 TIE 셀을 쓰지 않음 |
 | CTS | 목표 스큐 0.01 | 강한 클럭 셀, trunk Metal7-8, `update_io_latency false`, 목표 스큐 0.05, 가상 클럭 지연 = 측정한 삽입 지연 | 기본값 실행에서 hold −1.134 ns(2,216 경로) |
 | Route 뒤 최적화 | bcwc로 setup·hold | OCV 유지 + setup 목표 여유 0.05 | hold 수정·Filler가 0 여유 setup을 먹었던 것(−0.012) |
+| RC 코너 | cap table `cln28hpl_...capTbl` + QRC tech | QRC tech 파일만 | 실습 cap table은 28 nm 공정용. 첫 실행 CTS 뒤 패드-코어 넷(약 0.9 mm) max_tran 97넷(최대 1.154 ns, 한계 0.28), IO setup -0.818 ns |
 | 출력 | `saveNetlist -flat` | 계층 넷리스트 | SDF 이름과 계층이 맞아야 함(UART IP에서 확인) |
 | 포트폴리오 | — | 셀 개수 `reports/cell_count.txt`, 배선 직후 OCV 타이밍, hold 수정 전·후, Filler 뒤 최종, `RouteDesign_for_ECO`(single) | FE·BE 포트폴리오 항목 |
 
