@@ -139,10 +139,12 @@ proc place_pads_in_ring {iofile} {
       set orient [dbGet [dbGet -p top.insts.name $prev].orient]
       for {set m 0} {$m < $k} {incr m} {
         set name [lindex $names [expr {$i + $m}]]
-        set pos [expr {$a0 + ($m + 1) * ($a1 - $a0) / ($k + 1.0)}]
-        # on a 0.1 um grid (a multiple of the manufacturing grid): the even split gave positions off
-        # the grid -> IMPFP-7251 'IO pad not on Grid' on the first run (2026-11-26)
-        set pos [format %.1f [expr {round($pos * 10.0) / 10.0}]]
+        # offset from the previous ring pad in whole um: the ring pads keep their own fraction
+        # (e.g. y = 2176.555), so the gaps on both sides stay whole um and padIORINGFEED1 (1 um,
+        # the narrowest IO filler) can close them. An absolute 0.1 um snap (first fix, 2026-11-26)
+        # left gaps like 0.245 um that no IO filler fits -> open IO ring.
+        set off [expr {round(($m + 1) * ($a1 - $a0) / ($k + 1.0))}]
+        set pos [format %.3f [expr {$a0 + $off}]]
         if {$axis == 0} {
           placeInstance $name $pos [lindex $pb 1] $orient -fixed
         } else {
